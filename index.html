@@ -1407,6 +1407,12 @@ async function syncAll() {
     _cache.vliq = {};
     (rawVliq || []).forEach(r => { _cache.vliq[r.fondo_id] = { valor: r.valor, fecha: r.fecha }; });
 
+    // Keep current page visible — prevent black screen
+    _appReady = true;
+    const _cp = _currentPage || 'resumen';
+    document.querySelectorAll('.page').forEach(x=>{ x.classList.remove('active'); });
+    const _pg = document.getElementById('page-'+_cp);
+    if(_pg) _pg.classList.add('active');
     updateHeader();
     buildCurrentPage();
     setSyncStatus('ok');
@@ -3431,111 +3437,8 @@ function updateSim() {
   if(tblSim)tblSim.innerHTML=vals.map((v,i)=>{if(i===0)return`<tr><td>Hoy</td><td>${fmt(v)}</td><td>—</td><td>—</td><td>—</td><td>1.00×</td></tr>`;const y=v-vals[i-1];acc+=y;return`<tr><td>Año ${i}</td><td>${fmt(v)}</td><td class="up">+${fmt(y)}</td><td class="down">-${fmt(exp)}</td><td class="up">+${fmt(acc)}</td><td>${(v/init).toFixed(2)}×</td></tr>`;}).join('');
 }
 
-// LOCAL MODE
-document.getElementById('setup-screen').style.display = 'none';
-document.getElementById('app').style.display = 'block';
 
-_cache.saldos  = JSON.parse(localStorage.getItem('pat_saldos')  || 'null') || JSON.parse(JSON.stringify(DEFAULT_SALDOS));
-_cache.cortes  = JSON.parse(localStorage.getItem('pat_cortes')  || 'null') || HISTORICO.slice();
-_cache.gastos  = JSON.parse(localStorage.getItem('pat_gastos')  || '[]');
-_cache.movs    = JSON.parse(localStorage.getItem('pat_movs')    || '[]');
-_cache.ingresos= JSON.parse(localStorage.getItem('pat_ingresos')|| '[]');
-_cache.vliq       = JSON.parse(localStorage.getItem('pat_vliq')       || '{}');
-_cache.inversiones = JSON.parse(localStorage.getItem('pat_inversiones') || '[]');
-
-// Replace Supabase calls with localStorage
-window.sb = async function(table, method, body, params) {
-  const key = 'pat_' + table;
-  if(method === 'GET') return JSON.parse(localStorage.getItem(key) || '[]');
-  if(method === 'POST') {
-    let arr = JSON.parse(localStorage.getItem(key) || '[]');
-    const item = {...body, id: Date.now()};
-    arr.unshift(item);
-    localStorage.setItem(key, JSON.stringify(arr));
-    return [item];
-  }
-  if(method === 'DELETE') {
-    let arr = JSON.parse(localStorage.getItem(key) || '[]');
-    const idMatch = (params||'').match(/id=eq[.](\d+)/);
-    if(idMatch) arr = arr.filter(x => String(x.id) !== idMatch[1]);
-    localStorage.setItem(key, JSON.stringify(arr));
-    return null;
-  }
-  return null;
-};
-
-window.sbUpsert = async function(table, data) {
-  if(table === 'saldos') {
-    if(!_cache.saldos[data.grupo_id]) _cache.saldos[data.grupo_id] = {};
-    _cache.saldos[data.grupo_id][data.subcuenta] = parseFloat(data.valor)||0;
-    localStorage.setItem('pat_saldos', JSON.stringify(_cache.saldos));
-    return [data];
-  }
-  if(table === 'cortes') {
-    const i = _cache.cortes.findIndex(x=>x.periodo===data.periodo);
-    if(i>=0) _cache.cortes[i]=data; else { _cache.cortes.push(data); _cache.cortes.sort((a,b)=>a.periodo.localeCompare(b.periodo)); }
-    localStorage.setItem('pat_cortes', JSON.stringify(_cache.cortes));
-    return [data];
-  }
-  if(table === 'vliq_cache') {
-    _cache.vliq[data.fondo_id]={valor:data.valor,fecha:data.fecha};
-    localStorage.setItem('pat_vliq', JSON.stringify(_cache.vliq));
-    return [data];
-  }
-  return [data];
-};
-
-// Override saveGrupoSaldos for local storage
-function calcEurEstimado(gId, sub, simbolo) {
-  const key = gId+'___'+sub;
-  const qtyId = 'qty-'+key.replace(/[^a-z0-9]/gi,'_');
-  const precioId = 'precio-'+simbolo;
-  const eurId = 'eur-'+key.replace(/[^a-z0-9]/gi,'_');
-  const qty = parseFloat(document.getElementById(qtyId)?.value) || 0;
-  const precio = parseFloat(document.getElementById(precioId)?.value) || 0;
-  const eur = qty * precio;
-  const eurEl = document.getElementById(eurId);
-  if(eurEl) eurEl.textContent = eur > 0 ? eur.toFixed(2)+'€' : '—';
-  if(eur > 0) _dirtyMap[key] = eur;
-  // Save price to precios
-  if(precio > 0) {
-    const p = getPreciosActuales();
-    p[simbolo] = { precio, fecha: new Date().toISOString().slice(0,10) };
-    setPreciosActuales(p);
-    updatePricesLastDate();
-  }
-}
-
-function autoActualizarPrecios() {
-  const btn = document.getElementById('btn-auto-precios');
-  if(btn) { btn.textContent='⏳...'; btn.disabled=true; }
-  autoUpdatePrices().then(n => {
-    if(btn) { btn.textContent='↺ Auto (BTC/USD)'; btn.disabled=false; }
-    updatePricesLastDate();
-    buildSaldosEditor(); // refresh to show updated prices
-    if(n>0) toast('✓ BTC, USD y USDC actualizados automáticamente');
-    else toast('Sin conexión — introduce los precios manualmente', true);
-  });
-}
-
-function toggleFormPrecios() {
-  abrirFormPrecios();
-}
-
-function updatePreciosResumenInline() {
-  const el = document.getElementById('precios-resumen-inline');
-  if(!el) return;
-  const p = getPreciosActuales();
-  const items = [
-    {k:'BTC', l:'BTC'},
-    {k:'USD', l:'USD/€'},
-    {k:'USDC', l:'USDC'},
-    {k:'SAN', l:'SAN'},
-    {k:'MRL', l:'MRL'},
-  ].filter(x=>p[x.k]?.precio).map(x=>'<span style="margin-right:12px"><strong>'+x.l+'</strong> '+p[x.k].precio+(p[x.k].fecha?' <span style="opacity:.5">'+p[x.k].fecha+'</span>':'')+'</span>');
-  el.innerHTML = items.length ? items.join('') : '<span style="color:var(--muted)">Sin precios guardados — introduce los precios manualmente</span>';
-}
-
+// ── Save grupo saldos (Supabase + localStorage backup) ──
 window.saveGrupoSaldos = async function(gId) {
   const g = GRUPOS.find(x=>x.id===gId);
   if(!g) return;
@@ -3547,7 +3450,6 @@ window.saveGrupoSaldos = async function(gId) {
     const isSp = sm && (sm.tipo==='crypto'||sm.tipo==='divisa'||sm.tipo==='accion');
 
     if(isSp) {
-      // Read qty and price directly from the DOM inputs
       const safeId = (gId+'___'+sub).replace(/[^a-z0-9]/gi,'_');
       const qtyEl = document.getElementById('qty-'+safeId);
       const prEl  = document.getElementById('precio-'+sm.simbolo);
@@ -3557,7 +3459,6 @@ window.saveGrupoSaldos = async function(gId) {
         const eur = Math.round(qty * precio * 100) / 100;
         if(!_cache.saldos[gId]) _cache.saldos[gId] = {};
         _cache.saldos[gId][sub] = eur;
-        // Save price for future use
         p[sm.simbolo] = { precio, fecha: hoy };
       } else if(_dirtyMap[gId+'___'+sub] !== undefined) {
         if(!_cache.saldos[gId]) _cache.saldos[gId] = {};
@@ -3574,50 +3475,72 @@ window.saveGrupoSaldos = async function(gId) {
   });
 
   setPreciosActuales(p);
+
+  // Save to Supabase
+  try {
+    for(const [sub, val] of Object.entries(_cache.saldos[gId]||{})) {
+      await sbUpsert('saldos', {grupo_id:gId, subcuenta:sub, valor:val}, 'grupo_id,subcuenta');
+    }
+    setSyncStatus('ok');
+  } catch(e) {
+    console.warn('Supabase save failed, using localStorage:', e.message);
+    setSyncStatus('err', e.message);
+  }
+  // Always save locally as backup
   localStorage.setItem('pat_saldos', JSON.stringify(_cache.saldos));
-  toast('✓ Guardado — ' + g.label);
+  toast('✓ ' + g.label + ' guardado');
   buildSaldosEditor();
   updateHeader();
 };
 
-function updateHeader() {
-  const s = _cache.saldos;
-  const t = s ? totSaldos(s) : 0;
-  const cortes = _cache.cortes || HISTORICO;
-  const last = cortes[cortes.length-1];
-  const prev = cortes.length>1 ? cortes[cortes.length-2] : null;
-
-  document.getElementById('h-total').textContent = fmt(t || totCorte(last));
-  document.getElementById('h-periodo').textContent = last ? last.periodo : '—';
-
-  if (prev) {
-    const t1 = totCorte(last), t0 = totCorte(prev);
-    const diff = t1-t0, pct = (diff/t0*100).toFixed(1), up=diff>=0;
-    const el = document.getElementById('h-growth');
-    el.innerHTML = (up?'▲':'▼')+' <span class="private-val">'+(up?'+':'')+fmtK(diff)+'</span> ('+(up?'+':'')+pct+'%) vs '+prev.periodo;
-    el.className = 'hstat-sub '+(up?'up':'down');
+// ── calcEurEstimado ──
+function calcEurEstimado(gId, sub, simbolo) {
+  const key = gId+'___'+sub;
+  const safeId = key.replace(/[^a-z0-9]/gi,'_');
+  const qtyEl  = document.getElementById('qty-'+safeId);
+  const prEl   = document.getElementById('precio-'+simbolo);
+  const eurEl  = document.getElementById('eur-'+safeId);
+  const qty    = parseFloat(qtyEl?.value) || 0;
+  const precio = parseFloat(prEl?.value)  || 0;
+  const eur    = qty * precio;
+  if(eurEl) eurEl.textContent = eur > 0 ? eur.toFixed(2)+'€' : '—';
+  if(eur > 0) _dirtyMap[key] = eur;
+  if(precio > 0) {
+    const p = getPreciosActuales();
+    p[simbolo] = { precio, fecha: new Date().toISOString().slice(0,10) };
+    setPreciosActuales(p);
+    updatePricesLastDate();
   }
-
-  const gastos = _cache.gastos || [];
-  const curMes = new Date().toISOString().slice(0,7);
-  const gMes = gastos.filter(g=>monthOf(g.fecha)===curMes);
-  const tGMes = gMes.reduce((a,g)=>a+(parseFloat(g.importe)||0),0);
-  document.getElementById('h-gastos').textContent = tGMes ? fmtK(tGMes) : '0€';
-  document.getElementById('h-gastos-sub').textContent = gMes.length+' transacciones este mes';
 }
 
-// Override syncAll — no Supabase, just refresh display
-window.syncAll = async function() {
-  setSyncStatus('ok');
-  updateHeader();
-  buildCurrentPage();
-};
-
-updateHeader();
-buildCurrentPage();
-setSyncStatus('ok');
-updatePricesLastDate();
-autoUpdatePrices();
+// ── INIT: connect to Supabase or show login ──
+if (loadConfig()) {
+  if (SB_TOKEN) {
+    // Already logged in this session
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    syncAll();
+    setTimeout(async () => {
+      try {
+        const r = await fetch(`${SB_URL}/auth/v1/user`, {
+          headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_TOKEN }
+        });
+        const u = await r.json();
+        const el = document.getElementById('session-user');
+        if (el && u.email) el.textContent = 'Sesión: ' + u.email;
+      } catch(e) {}
+    }, 1000);
+  } else {
+    document.getElementById('setup-screen').style.display = 'flex';
+    showLogin();
+  }
+} else {
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('form-setup').style.display = 'block';
+  document.getElementById('auth-title').textContent = 'Configuración inicial';
+  document.getElementById('auth-subtitle').textContent = 'Primera vez. Introduce las claves de tu proyecto Supabase.';
+}
 </script>
 </body>
 </html>
