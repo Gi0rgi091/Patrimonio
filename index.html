@@ -1371,6 +1371,49 @@ function clearConfig() {
 // ═══════════════════════════════════════════════════
 // SYNC — load all data from Supabase
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// INTEGRACIÓN CON SPINS TRACKER (mismo proyecto Supabase)
+// Lee spins_cajeros y sobreescribe los saldos del grupo 'poker'
+// con los valores reales en vivo gestionados desde Spins Tracker.
+// ═══════════════════════════════════════════════════
+const POKER_CAJERO_MAP = {
+  // 'sala|tipo' en spins_cajeros → nombre exacto de subcuenta en grupo 'poker'
+  'PokerStars|real':     'PokerStars',
+  'Winamax|real':        'Winamax (€ reales)',
+  'Winamax|millas':      'Winamax (T€ — euros de torneo)', // convertido más abajo
+  'PartyPoker|real':     'PartyPoker (€ reales)',
+  'PartyPoker|torneo':   'PartyPoker (T€ — euros de torneo)',
+};
+const MILLAS_A_EUROS_RATIO = 1000/69000; // 69.000 millas = 1.000€
+
+let _appReady = false;
+let _pokerSyncStatus = { ok: false, msg: 'No ejecutado aún' };
+
+async function syncPokerCajeros() {
+  try {
+    const rawCajeros = await sb('spins_cajeros', 'GET', null, '?select=sala,tipo,saldo');
+    if (!rawCajeros || !rawCajeros.length) {
+      _pokerSyncStatus = { ok: false, msg: 'spins_cajeros devolvió 0 filas (¿tabla vacía o RLS bloqueando?)' };
+      return;
+    }
+    if (!_cache.saldos.poker) _cache.saldos.poker = {};
+    let aplicadas = 0;
+    rawCajeros.forEach(c => {
+      const key = `${c.sala}|${c.tipo}`;
+      const subcuenta = POKER_CAJERO_MAP[key];
+      if (!subcuenta) return; // sala/tipo sin mapeo (p.ej. salas personalizadas) — se ignora aquí
+      let valor = parseFloat(c.saldo) || 0;
+      if (c.tipo === 'millas') valor = Math.round(valor * MILLAS_A_EUROS_RATIO * 100) / 100;
+      _cache.saldos.poker[subcuenta] = valor;
+      aplicadas++;
+    });
+    _pokerSyncStatus = { ok: true, msg: `${aplicadas} de ${rawCajeros.length} cajeros aplicados` };
+  } catch(e) {
+    _pokerSyncStatus = { ok: false, msg: 'Error: ' + e.message };
+    console.error('No se pudo sincronizar cajeros de poker (Spins Tracker):', e);
+  }
+}
+
 async function syncAll() {
   try {
     // Load saldos
@@ -1385,6 +1428,9 @@ async function syncAll() {
       // No saldos yet — use defaults
       _cache.saldos = JSON.parse(JSON.stringify(DEFAULT_SALDOS));
     }
+
+    // Sobreescribir saldos de poker con los datos en vivo de Spins Tracker
+    await syncPokerCajeros();
 
     // Load cortes
     const rawCortes = await sb('cortes', 'GET', null, '?order=periodo.asc');
@@ -1587,11 +1633,11 @@ async function guardarInversion() {
   const esVenta  = tipo.endsWith('_venta');
 
   if(origen && destino && findGrupoForSub(origen) && findGrupoForSub(destino)) {
-    updateDosSaldos(origen, destino, importeReal);
+    await updateDosSaldos(origen, destino, importeReal);
   } else if(origen && findGrupoForSub(origen) && esCompra) {
-    updateSaldoLocal(origen, -importeReal, 'Restar -' + fmt(importeReal) + ' de ' + origen + '. ¿Actualizar saldo?');
+    await updateSaldoLocal(origen, -importeReal);
   } else if(destino && findGrupoForSub(destino) && esVenta) {
-    updateSaldoLocal(destino, importeReal, 'Sumar +' + fmt(importeReal) + ' a ' + destino + '. ¿Actualizar saldo?');
+    await updateSaldoLocal(destino, importeReal);
   }
 
   // Guardar precio de compra para cálculo de rentabilidad posterior
@@ -1996,6 +2042,11 @@ function buildSaldosEditor(){
     const gTotal=g.subs.reduce((a,sub)=>a+(parseFloat(gs[sub])||0),0);
     const block=document.createElement('div');
     block.className='group-block';
+    const pokerBadge = (g.id==='poker')
+      ? `<div style="padding:6px 16px;font-size:11px;border-top:1px solid var(--border);background:${_pokerSyncStatus.ok?'rgba(46,204,113,0.08)':'rgba(229,90,90,0.08)'};color:${_pokerSyncStatus.ok?'#2ecc71':'#e05555'}">
+           ${_pokerSyncStatus.ok?'🔗 Sincronizado con Spins Tracker':'⚠ Sin sincronizar con Spins Tracker'} — ${_pokerSyncStatus.msg}
+         </div>`
+      : '';
     block.innerHTML=`
       <div class="group-header">
         <div class="group-name" onclick="toggleGrp('${g.id}')" style="cursor:pointer;flex:1">
@@ -2013,6 +2064,7 @@ function buildSaldosEditor(){
           </span>
         </div>
       </div>
+      ${pokerBadge}
       <div class="group-body" id="body-${g.id}">
         <div style="padding:9px 16px;border-top:1px solid var(--border)">
           <button class="btn btn-primary" style="font-size:10px;padding:7px 14px" onclick="saveGrupoSaldos('${g.id}')">💾 Guardar ${g.label}</button>
@@ -2112,16 +2164,24 @@ function buildSaldosEditor(){
 
       } else {
         // Normal EUR field
+        const esPokerSincronizado = (g.id === 'poker') && Object.values(POKER_CAJERO_MAP).includes(sub);
         const wrap = document.createElement('div');
         wrap.style.cssText = 'display:flex;align-items:center;gap:8px';
         const lbl = document.createElement('label');
         lbl.style.cssText = 'font-size:12px;color:var(--muted);flex:1';
-        lbl.textContent = sub;
+        lbl.textContent = sub + (esPokerSincronizado ? ' 🔗' : '');
+        if(esPokerSincronizado) lbl.title = 'Sincronizado en vivo desde Spins Tracker';
         const inp = document.createElement('input');
         inp.type='number'; inp.value=v||''; inp.step='0.01'; inp.placeholder='0';
         inp.style.cssText = 'width:110px;text-align:right;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:IBM Plex Mono;font-size:13px;padding:2px 4px';
-        inp.oninput = (function(k){ return function(){ _dirtyMap[k]=parseFloat(this.value)||0; }; })(key);
-        inp.onchange = inp.oninput;
+        if(esPokerSincronizado) {
+          inp.disabled = true;
+          inp.title = 'Este saldo se actualiza automáticamente desde Spins Tracker. Edítalo allí.';
+          inp.style.opacity = '0.6'; inp.style.cursor = 'not-allowed';
+        } else {
+          inp.oninput = (function(k){ return function(){ _dirtyMap[k]=parseFloat(this.value)||0; }; })(key);
+          inp.onchange = inp.oninput;
+        }
         const eurSpan = document.createElement('span');
         eurSpan.style.cssText = 'color:var(--muted);font-size:12px';
         eurSpan.textContent = '€';
@@ -2471,7 +2531,7 @@ function findGrupoForSub(subcuenta) {
   return null;
 }
 
-function updateSaldoLocal(subcuenta, delta, confirmMsg) {
+async function updateSaldoLocal(subcuenta, delta, confirmMsg) {
   if(!subcuenta || !delta) return false;
   const gId = findGrupoForSub(subcuenta);
   if(!gId) return false;
@@ -2479,37 +2539,42 @@ function updateSaldoLocal(subcuenta, delta, confirmMsg) {
   if(!s[gId]) s[gId] = {};
   const actual = parseFloat(s[gId][subcuenta]) || 0;
   const nuevo = actual + delta;
-  s[gId][subcuenta] = Math.round(nuevo * 100) / 100;
+  const nuevoRedondeado = Math.round(nuevo * 100) / 100;
+  s[gId][subcuenta] = nuevoRedondeado;
   localStorage.setItem('pat_saldos', JSON.stringify(s));
   _cache.saldos = s;
+  try { await sbUpsert('saldos', {grupo_id:gId, subcuenta, valor:nuevoRedondeado}, 'grupo_id,subcuenta'); }
+  catch(e){ console.error('Error sincronizando saldo:',e); }
   toast('✓ Saldo actualizado: ' + subcuenta.split(' ')[0] + ' → ' + fmt(nuevo));
   updateHeader();
   return true;
 }
 
-function updateDosSaldos(subOrigen, subDestino, importe) {
+async function updateDosSaldos(subOrigen, subDestino, importe) {
   const gOrigen = findGrupoForSub(subOrigen);
   const gDestino = findGrupoForSub(subDestino);
   const s = _cache.saldos;
   const actualOrigen = gOrigen ? (parseFloat(s[gOrigen]?.[subOrigen]) || 0) : null;
   const actualDestino = gDestino ? (parseFloat(s[gDestino]?.[subDestino]) || 0) : null;
 
-  let msg = 'Actualizar saldos automáticamente:';
-  if(actualOrigen !== null) msg += '\n• ' + subOrigen + ': ' + fmt(actualOrigen) + ' → ' + fmt(actualOrigen - importe);
-  if(actualDestino !== null) msg += '\n• ' + subDestino + ': ' + fmt(actualDestino) + ' → ' + fmt(actualDestino + importe);
-
   // Actualización automática sin confirmación
-
+  let nuevoOrigen, nuevoDestino;
   if(gOrigen) {
     if(!s[gOrigen]) s[gOrigen] = {};
-    s[gOrigen][subOrigen] = Math.round(((parseFloat(s[gOrigen][subOrigen])||0) - importe) * 100) / 100;
+    nuevoOrigen = Math.round(((parseFloat(s[gOrigen][subOrigen])||0) - importe) * 100) / 100;
+    s[gOrigen][subOrigen] = nuevoOrigen;
   }
   if(gDestino) {
     if(!s[gDestino]) s[gDestino] = {};
-    s[gDestino][subDestino] = Math.round(((parseFloat(s[gDestino][subDestino])||0) + importe) * 100) / 100;
+    nuevoDestino = Math.round(((parseFloat(s[gDestino][subDestino])||0) + importe) * 100) / 100;
+    s[gDestino][subDestino] = nuevoDestino;
   }
   localStorage.setItem('pat_saldos', JSON.stringify(s));
   _cache.saldos = s;
+  try {
+    if(gOrigen) await sbUpsert('saldos', {grupo_id:gOrigen, subcuenta:subOrigen, valor:nuevoOrigen}, 'grupo_id,subcuenta');
+    if(gDestino) await sbUpsert('saldos', {grupo_id:gDestino, subcuenta:subDestino, valor:nuevoDestino}, 'grupo_id,subcuenta');
+  } catch(e){ console.error('Error sincronizando saldos:',e); }
   return true;
 }
 
@@ -2526,7 +2591,7 @@ async function guardarGasto(){
   // Actualizar saldo automáticamente
   if(cuenta && findGrupoForSub(cuenta)) {
     const delta = esIngreso ? importe : -importe;
-    updateSaldoLocal(cuenta, delta, '');
+    await updateSaldoLocal(cuenta, delta);
   }
   toast('✓ Gasto guardado: ' + fmt(importe) + (cuenta ? ' · saldo ' + cuenta.split(' ')[0] + ' actualizado' : ''));
   limpiarGasto(); updateHeader();
@@ -2631,10 +2696,14 @@ async function guardarMov(){
   let notaBase=document.getElementById('m-nota').value;
   if(partic&&vliq) notaBase+=` | ${partic} part. × ${vliq}€/VL${comF?' com:'+comF+'€':''}`;
   if(nAcc&&pAcc)   notaBase+=` | ${nAcc} títulos × ${pAcc}€${comF?' com:'+comF+'€':''}`;
-  const m={fecha,tipo,importe,origen,destino,nota:notaBase.trim(),id:Date.now()};
+  const m={fecha,tipo,importe,origen,destino,nota:notaBase.trim(),es_historico:false,id:Date.now()};
   if(!_cache.movs)_cache.movs=[];
   _cache.movs.unshift(m);
   localStorage.setItem('pat_movs',JSON.stringify(_cache.movs));
+
+  // ── Guardar movimiento en Supabase (sincroniza entre dispositivos) ──
+  try { await sb('movimientos','POST',m); }
+  catch(e){ console.error('Error guardando movimiento en Supabase:',e); toast('Guardado local, pero falló la sincronización',true); }
 
   // ── Actualizar saldos automáticamente según tipo ──
   const tiposConOrigen=['retirada','traspaso','dep_poker','ret_poker','compra_btc','venta_btc','aportacion'];
@@ -2645,15 +2714,13 @@ async function guardarMov(){
 
   if(hayOrigen && hayDestino) {
     // Traspaso: resta de origen, suma a destino
-    updateDosSaldos(origen, destino, importe);
+    await updateDosSaldos(origen, destino, importe);
   } else if(hayOrigen) {
     // Solo resta de origen (ej: compra BTC sin subcuenta destino)
-    const msg = 'Restar -' + fmt(importe) + ' de ' + origen + '. ¿Actualizar saldo?';
-    updateSaldoLocal(origen, -importe, msg);
+    await updateSaldoLocal(origen, -importe);
   } else if(hayDestino) {
     // Solo suma a destino (ej: ingreso externo)
-    const msg = 'Sumar +' + fmt(importe) + ' a ' + destino + '. ¿Actualizar saldo?';
-    updateSaldoLocal(destino, importe, msg);
+    await updateSaldoLocal(destino, importe);
   }
 
   limpiarMov();
@@ -3393,10 +3460,12 @@ async function guardarIngreso() {
   if(!_cache.ingresos)_cache.ingresos=[];
   _cache.ingresos.unshift(g);
   localStorage.setItem('pat_ingresos',JSON.stringify(_cache.ingresos));
+  try { await sb('ingresos','POST',g); }
+  catch(e){ console.error('Error guardando ingreso en Supabase:',e); }
   ['i-importe','i-desc','i-nota'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   // Actualizar saldo automáticamente
   if(cuenta && findGrupoForSub(cuenta)) {
-    updateSaldoLocal(cuenta, importe, '');
+    await updateSaldoLocal(cuenta, importe);
   }
   toast('✓ Ingreso guardado: +'+fmt(importe)+(cuenta&&findGrupoForSub(cuenta)?' · saldo '+cuenta.split(' ')[0]+' actualizado':''));
   updateHeader();
