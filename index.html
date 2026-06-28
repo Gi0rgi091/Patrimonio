@@ -385,9 +385,206 @@
       </div>
     </div>
 
-    <div id="page-gastos" class="page"></div>
-    <div id="page-ingresos" class="page"></div>
-    <div id="page-inversiones" class="page"></div>
+    <!-- ═══ GASTOS ═══ -->
+    <div id="page-gastos" class="page">
+      <div class="sub-tabs" style="display:flex;gap:6px;margin-bottom:14px">
+        <button class="sub-tab-btn active" id="gtab-btn-nuevo" onclick="showGastosTab('nuevo')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--accent-soft);color:var(--accent);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Registrar</button>
+        <button class="sub-tab-btn" id="gtab-btn-historial" onclick="showGastosTab('historial')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Historial</button>
+        <button class="sub-tab-btn" id="gtab-btn-analisis" onclick="showGastosTab('analisis')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Análisis</button>
+        <button class="sub-tab-btn" id="gtab-btn-cats" onclick="showGastosTab('cats')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">⚙ Categorías</button>
+      </div>
+
+      <div id="gtab-nuevo">
+        <div class="form-card">
+          <div class="section-title" style="margin-top:0">Nuevo gasto</div>
+          <div class="field-row">
+            <div class="field"><label>Fecha</label><input type="date" id="g-fecha"></div>
+            <div class="field"><label>Importe (€)</label><input type="number" id="g-importe" placeholder="0.00" step="0.01" min="0"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Categoría</label><select id="g-cat" onchange="onGastoCatChange()"><option value="">— Selecciona —</option></select></div>
+            <div class="field"><label>Concepto</label><select id="g-concepto"><option value="">— Selecciona categoría —</option></select></div>
+          </div>
+          <div class="field"><label>Cuenta de cargo</label><select id="g-cuenta"><option value="">— Ninguna —</option></select></div>
+          <div class="field"><label>Nota (opcional)</label><input type="text" id="g-nota" placeholder="ej. Cena cumpleaños Ana"></div>
+          <div class="modal-footer" style="margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="guardarGasto()">💾 Guardar gasto</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="gtab-historial" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <select id="g-filtro-cat" onchange="renderGastos()" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)">
+            <option value="">Todas las categorías</option>
+          </select>
+          <select id="g-filtro-mes" onchange="renderGastos()" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)"></select>
+        </div>
+        <div id="gastos-list"></div>
+      </div>
+
+      <div id="gtab-analisis" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select id="g-analisis-mes" onchange="buildGastosAnalisis()" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)"></select>
+        </div>
+        <div class="stats-grid" style="margin-bottom:12px">
+          <div class="stat-card"><div class="stat-label">Total mes</div><div class="stat-value neg private-val" id="ga-total-mes">—</div></div>
+          <div class="stat-card"><div class="stat-label">Total año</div><div class="stat-value neg private-val" id="ga-total-año">—</div></div>
+        </div>
+        <div class="chart-card"><div class="chart-title">Composición del mes</div><div class="chart-wrap"><canvas id="ch-gastos-donut"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Por categoría — mes vs año</div><div class="chart-wrap tall"><canvas id="ch-gastos-cats"></canvas></div></div>
+        <div class="chart-card">
+          <div class="chart-title">Detalle por categoría</div>
+          <div class="tabla-scroll"><table class="tabla-resumen">
+            <thead><tr><th>Categoría</th><th>Mes</th><th>Año</th><th>% mes</th></tr></thead>
+            <tbody id="tbl-gastos-cats"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div id="gtab-cats" style="display:none">
+        <div class="insight-banner" style="font-size:12px;margin-bottom:14px">Crea tus propias categorías y conceptos de gasto. Los conceptos aparecerán en el formulario al registrar.</div>
+        <div id="gastos-cats-editor"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addGastoCat()" style="border:1px solid var(--border);margin-top:8px">＋ Nueva categoría</button>
+      </div>
+    </div>
+
+    <!-- ═══ INGRESOS ═══ -->
+    <div id="page-ingresos" class="page">
+      <div class="sub-tabs" style="display:flex;gap:6px;margin-bottom:14px">
+        <button class="sub-tab-btn active" id="itab-btn-nuevo" onclick="showIngresosTab('nuevo')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--accent-soft);color:var(--accent);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Registrar</button>
+        <button class="sub-tab-btn" id="itab-btn-historial" onclick="showIngresosTab('historial')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Historial</button>
+        <button class="sub-tab-btn" id="itab-btn-analisis" onclick="showIngresosTab('analisis')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Análisis</button>
+        <button class="sub-tab-btn" id="itab-btn-cats" onclick="showIngresosTab('cats')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">⚙ Categorías</button>
+      </div>
+
+      <div id="itab-nuevo">
+        <div class="form-card" style="background:var(--green-soft);border-color:var(--green)">
+          <div class="stat-label" style="margin-bottom:4px">Ingresos poker este mes (automático)</div>
+          <div class="stat-value pos private-val" id="ing-poker-auto">—</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="ing-poker-auto-detalle">Calculado desde saldos y movimientos</div>
+        </div>
+        <div class="form-card">
+          <div class="section-title" style="margin-top:0">Nuevo ingreso</div>
+          <div class="field-row">
+            <div class="field"><label>Fecha</label><input type="date" id="i-fecha"></div>
+            <div class="field"><label>Importe (€)</label><input type="number" id="i-importe" placeholder="0.00" step="0.01" min="0"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Categoría</label><select id="i-cat" onchange="onIngresoCatChange()"><option value="">— Selecciona —</option></select></div>
+            <div class="field"><label>Concepto</label><select id="i-concepto"><option value="">— Selecciona categoría —</option></select></div>
+          </div>
+          <div class="field"><label>Cuenta de abono</label><select id="i-cuenta"><option value="">— Ninguna —</option></select></div>
+          <div class="field"><label>Nota (opcional)</label><input type="text" id="i-nota" placeholder="ej. Dividendo Santander Q2"></div>
+          <div class="modal-footer" style="margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="guardarIngreso()">💾 Guardar ingreso</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="itab-historial" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select id="i-filtro-mes" onchange="renderIngresos()" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)"></select>
+        </div>
+        <div id="ingresos-list"></div>
+      </div>
+
+      <div id="itab-analisis" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select id="i-analisis-mes" onchange="buildIngresosAnalisis()" style="flex:1;padding:8px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)"></select>
+        </div>
+        <div class="stats-grid" style="margin-bottom:12px">
+          <div class="stat-card"><div class="stat-label">Total mes</div><div class="stat-value pos private-val" id="ia-total-mes">—</div></div>
+          <div class="stat-card"><div class="stat-label">Total año</div><div class="stat-value pos private-val" id="ia-total-año">—</div></div>
+        </div>
+        <div class="chart-card"><div class="chart-title">Composición del mes</div><div class="chart-wrap"><canvas id="ch-ingresos-donut"></canvas></div></div>
+        <div class="chart-card">
+          <div class="chart-title">Detalle por categoría</div>
+          <div class="tabla-scroll"><table class="tabla-resumen">
+            <thead><tr><th>Categoría</th><th>Mes</th><th>Año</th><th>% mes</th></tr></thead>
+            <tbody id="tbl-ingresos-cats"></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div id="itab-cats" style="display:none">
+        <div class="insight-banner" style="font-size:12px;margin-bottom:14px">Crea tus propias categorías y conceptos de ingreso.</div>
+        <div id="ingresos-cats-editor"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addIngresoCat()" style="border:1px solid var(--border);margin-top:8px">＋ Nueva categoría</button>
+      </div>
+    </div>
+
+    <!-- ═══ INVERSIONES ═══ -->
+    <div id="page-inversiones" class="page">
+      <div class="sub-tabs" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <button id="invtab-btn-resumen"   onclick="showInvTab('resumen')"   style="padding:7px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Resumen</button>
+        <button id="invtab-btn-fondo"     onclick="showInvTab('fondo')"     style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Por fondo</button>
+        <button id="invtab-btn-registrar" onclick="showInvTab('registrar')" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer">Registrar</button>
+      </div>
+      <div id="invtab-resumen">
+        <div class="form-card">
+          <div class="section-title" style="margin-top:0">Valor liquidativo actual</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Introduce el VL actual de cada fondo para calcular rentabilidad real.</p>
+          <div id="inv-vl-inputs"></div>
+          <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="guardarTodosVL()">💾 Guardar cotizaciones</button>
+        </div>
+        <div class="stats-grid" style="margin-bottom:12px">
+          <div class="stat-card"><div class="stat-label">Total invertido</div><div class="stat-value neutral private-val" id="inv-total-inv">—</div></div>
+          <div class="stat-card"><div class="stat-label">Valor actual</div><div class="stat-value neutral private-val" id="inv-total-val">—</div></div>
+          <div class="stat-card"><div class="stat-label">Ganancia / Pérdida</div><div class="stat-value neutral private-val" id="inv-total-gp">—</div><div class="stat-sub" id="inv-total-gpct"></div></div>
+          <div class="stat-card"><div class="stat-label">Coste anual estimado</div><div class="stat-value neutral private-val" id="inv-total-coste">—</div></div>
+        </div>
+        <div class="chart-card"><div class="chart-title">Invertido vs valor actual</div><div class="chart-wrap"><canvas id="ch-inv-barras"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Composición (valor actual)</div><div class="chart-wrap"><canvas id="ch-inv-donut"></canvas></div></div>
+        <div class="chart-card">
+          <div class="chart-title">Detalle por fondo</div>
+          <div class="tabla-scroll"><table class="tabla-resumen">
+            <thead><tr><th>Fondo</th><th>Invertido</th><th>Partic.</th><th>VL</th><th>Valor</th><th>G/P €</th><th>G/P %</th><th>TER%</th><th>Coste/año</th></tr></thead>
+            <tbody id="tbl-inv-body"></tbody>
+          </table></div>
+        </div>
+      </div>
+      <div id="invtab-fondo" style="display:none">
+        <div class="field" style="margin-bottom:14px">
+          <label>Selecciona fondo</label>
+          <select id="inv-fondo-sel" onchange="buildInvFondo(this.value)" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);color:var(--text)"></select>
+        </div>
+        <div id="inv-fondo-detail"></div>
+      </div>
+      <div id="invtab-registrar" style="display:none">
+        <div class="form-card">
+          <div class="section-title" style="margin-top:0">Nueva operación</div>
+          <div class="field-row">
+            <div class="field"><label>Fecha</label><input type="date" id="inv-fecha"></div>
+            <div class="field"><label>Tipo</label>
+              <select id="inv-tipo">
+                <option value="suscripcion">Suscripción (compra)</option>
+                <option value="reembolso">Reembolso (venta)</option>
+                <option value="traspaso_entrada">Traspaso entrada</option>
+                <option value="traspaso_salida">Traspaso salida</option>
+              </select>
+            </div>
+          </div>
+          <div class="field"><label>Fondo</label><select id="inv-fondo-reg" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);color:var(--text)"></select></div>
+          <div class="field-row">
+            <div class="field"><label>Importe (€)</label><input type="number" id="inv-importe" placeholder="0.00" step="0.01"></div>
+            <div class="field"><label>Participaciones</label><input type="number" id="inv-partic" placeholder="0.000000" step="0.000001"></div>
+          </div>
+          <div class="field"><label>Valor liquidativo (€/participación)</label><input type="number" id="inv-vl-reg" placeholder="0.0000" step="0.0001"></div>
+          <div class="field"><label>Nota (opcional)</label><input type="text" id="inv-nota-reg"></div>
+          <div class="modal-footer" style="margin-top:6px">
+            <button class="btn btn-primary btn-sm" onclick="guardarOperacionFondo()">💾 Guardar</button>
+          </div>
+        </div>
+        <div class="chart-card" style="margin-top:14px">
+          <div class="chart-title">Historial</div>
+          <div class="tabla-scroll"><table class="tabla-resumen">
+            <thead><tr><th>Fecha</th><th>Fondo</th><th>Tipo</th><th>Importe</th><th>Part.</th><th>VL</th><th></th></tr></thead>
+            <tbody id="tbl-inv-ops"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
     <!-- ═══ MOVIMIENTOS ═══ -->
     <div id="page-movimientos" class="page">
       <div class="sub-tabs" style="display:flex;gap:6px;margin-bottom:14px">
@@ -711,85 +908,216 @@ const HISTORICO = [
 
 // ── Definición de fondos individuales (para Rentabilidad y Fondos — NO TOCAR datos) ──
 const FONDOS_DEF = [
-  { id:'finizens',nombre:'Finizens Cartera 6',isin:'Finizens-C6',plataforma:'Finizens',color:'#38a0e0',total_invertido:52991.88,comision_anual_pct:0.23,enlace:'https://app.finizens.com',
-    aportaciones_data:[{fecha:'2019-11-15',importe:52661.88},{fecha:'2026-05-05',importe:330}]},
-  { id:'numantia_mi',nombre:'Numantia Patrimonio Global — MyInvestor',isin:'ES0173311103',plataforma:'MyInvestor',color:'#3b8ef0',total_invertido:48589.09,comision_anual_pct:1.35,enlace:'https://app.myinvestor.es',
+  // ── FINIZENS Cartera 6 ─────────────────────────────────────────────
+  // NOTA: datos de aportaciones individuales pendientes (usuario los está recopilando).
+  // La entrada de 2019-11-15 agrupa todas las aportaciones hasta esa fecha.
+  { id:'finizens', nombre:'Finizens Cartera 6', isin:'Finizens-C6', plataforma:'Finizens',
+    tipo:'rv', color:'#38a0e0', total_invertido:52991.88, comision_anual_pct:0.23,
+    enlace:'https://app.finizens.com',
     aportaciones_data:[
-      {fecha:'2024-01-22',importe:1750},{fecha:'2024-02-22',importe:1750},{fecha:'2024-03-22',importe:1750},{fecha:'2024-04-22',importe:1750},{fecha:'2024-05-22',importe:1750},{fecha:'2024-06-24',importe:1750},
-      {fecha:'2024-07-22',importe:1750},{fecha:'2024-08-26',importe:1750},{fecha:'2024-09-23',importe:1750},{fecha:'2024-10-22',importe:1750},{fecha:'2024-11-22',importe:1750},{fecha:'2024-12-23',importe:1750},
-      {fecha:'2025-01-22',importe:1750},{fecha:'2025-02-24',importe:1750},{fecha:'2025-03-24',importe:1750},{fecha:'2025-04-22',importe:1750},{fecha:'2025-05-22',importe:1750},{fecha:'2025-06-23',importe:1750},
-      {fecha:'2025-07-22',importe:1750},{fecha:'2025-08-22',importe:1750},{fecha:'2025-09-22',importe:1750},{fecha:'2025-10-22',importe:1750},{fecha:'2025-11-24',importe:1750},{fecha:'2025-12-23',importe:1750},
-      {fecha:'2026-01-23',importe:1750},{fecha:'2026-02-12',importe:1544.39},{fecha:'2026-02-12',importe:453.20},{fecha:'2026-02-17',importe:1091.50},{fecha:'2026-02-23',importe:1750},
+      {fecha:'2019-11-15', importe:52661.88},
+      {fecha:'2026-05-05', importe:330},
     ]},
-  { id:'numantia_r4',nombre:'Numantia Patrimonio Global — Renta4',isin:'ES0173311103',plataforma:'Renta4',color:'#8b72f0',total_invertido:41590,comision_anual_pct:1.35,enlace:'https://www.r4.com',
+
+  // ── NUMANTIA PATRIMONIO GLOBAL — MyInvestor ─────────────────────────
+  // ISIN: ES0173311103 — mismo fondo que numantia_r4, custodio diferente.
+  // Suscripciones de enero 2024 en adelante. VL y participaciones exactos del FIFO de MyInvestor.
+  { id:'numantia_mi', nombre:'Numantia Patrimonio Global — MyInvestor', isin:'ES0173311103',
+    plataforma:'MyInvestor', tipo:'rv', color:'#3b8ef0', total_invertido:48589.09,
+    comision_anual_pct:1.35, enlace:'https://app.myinvestor.es',
     aportaciones_data:[
-      {fecha:'2020-05-12',importe:1600,precio_vl:10.698897},{fecha:'2020-06-01',importe:400,precio_vl:11.309327},
-      {fecha:'2020-07-06',importe:100,precio_vl:11.951059},{fecha:'2020-07-31',importe:250,precio_vl:11.678241},
-      {fecha:'2020-08-31',importe:250,precio_vl:12.116294},{fecha:'2020-09-30',importe:250,precio_vl:11.952337},
-      {fecha:'2020-10-30',importe:250,precio_vl:11.867031},{fecha:'2020-11-30',importe:250,precio_vl:13.872360},
-      {fecha:'2020-12-30',importe:250,precio_vl:14.455593},{fecha:'2021-01-15',importe:250,precio_vl:14.942155},
-      {fecha:'2021-02-01',importe:250,precio_vl:15.131641},{fecha:'2021-02-16',importe:250,precio_vl:16.501945},
-      {fecha:'2021-03-01',importe:250,precio_vl:16.202414},{fecha:'2021-03-15',importe:250,precio_vl:16.900871},
-      {fecha:'2021-03-29',importe:250,precio_vl:16.624236},{fecha:'2021-04-19',importe:250,precio_vl:17.199650},
-      {fecha:'2021-04-28',importe:250,precio_vl:17.247075},{fecha:'2021-05-13',importe:250,precio_vl:16.174467},
-      {fecha:'2021-05-28',importe:250,precio_vl:16.777090},{fecha:'2021-06-15',importe:250,precio_vl:17.035259},
-      {fecha:'2021-06-28',importe:250,precio_vl:17.613188},{fecha:'2021-07-15',importe:250,precio_vl:17.200014},
-      {fecha:'2021-07-28',importe:250,precio_vl:17.319336},{fecha:'2021-08-30',importe:250,precio_vl:17.403946},
-      {fecha:'2021-09-16',importe:250,precio_vl:17.533076},{fecha:'2021-09-28',importe:250,precio_vl:17.268423},
-      {fecha:'2021-10-28',importe:500,precio_vl:18.586212},{fecha:'2021-11-29',importe:500,precio_vl:18.801693},
-      {fecha:'2021-12-29',importe:500,precio_vl:18.544473},
-      {fecha:'2022-01-28',importe:1170,precio_vl:16.864390},{fecha:'2022-02-28',importe:1170,precio_vl:17.249899},
-      {fecha:'2022-03-28',importe:1170,precio_vl:18.865014},{fecha:'2022-04-28',importe:1170,precio_vl:17.830769},
-      {fecha:'2022-05-31',importe:1170,precio_vl:16.409352},{fecha:'2022-06-28',importe:1170,precio_vl:15.108481},
-      {fecha:'2022-07-28',importe:1170,precio_vl:16.559836},{fecha:'2022-08-29',importe:1170,precio_vl:16.456696},
-      {fecha:'2022-09-28',importe:1170,precio_vl:15.448402},{fecha:'2022-10-28',importe:1170,precio_vl:15.150192},
-      {fecha:'2022-11-28',importe:1170,precio_vl:15.078868},{fecha:'2022-12-28',importe:1170,precio_vl:13.698996},
-      {fecha:'2023-01-30',importe:1500,precio_vl:15.411851},{fecha:'2023-02-28',importe:1500,precio_vl:15.890309},
-      {fecha:'2023-03-28',importe:1500,precio_vl:15.041970},{fecha:'2023-04-28',importe:1500,precio_vl:15.542600},
-      {fecha:'2023-05-30',importe:1500,precio_vl:16.165473},{fecha:'2023-06-28',importe:1500,precio_vl:16.958361},
-      {fecha:'2023-07-28',importe:1500,precio_vl:17.934726},{fecha:'2023-08-28',importe:1500,precio_vl:17.403946},
-      {fecha:'2023-09-28',importe:1500,precio_vl:17.508494},{fecha:'2023-10-30',importe:1500,precio_vl:16.195749},
-      {fecha:'2023-11-28',importe:1500,precio_vl:17.575684},{fecha:'2023-12-28',importe:1500,precio_vl:19.068465},
-      {fecha:'2026-04-07',importe:200,precio_vl:26.891437},
+      {fecha:'2024-01-22', importe:1750.00, partic:91.9027,  precio_vl:19.0419},
+      {fecha:'2024-02-22', importe:1750.00, partic:87.8717,  precio_vl:19.9154},
+      {fecha:'2024-03-22', importe:1750.00, partic:87.4570,  precio_vl:20.0098},
+      {fecha:'2024-04-22', importe:1750.00, partic:89.5621,  precio_vl:19.5395},
+      {fecha:'2024-05-22', importe:1750.00, partic:86.6319,  precio_vl:20.2004},
+      {fecha:'2024-06-24', importe:1750.00, partic:87.4490,  precio_vl:20.0117},
+      {fecha:'2024-07-22', importe:1750.00, partic:83.2447,  precio_vl:21.0224},
+      {fecha:'2024-08-26', importe:1750.00, partic:84.0832,  precio_vl:20.8127},
+      {fecha:'2024-09-23', importe:1750.00, partic:80.4342,  precio_vl:21.7569},
+      {fecha:'2024-10-22', importe:1750.00, partic:79.0791,  precio_vl:22.1297},
+      {fecha:'2024-11-22', importe:1750.00, partic:71.0009,  precio_vl:24.6476},
+      {fecha:'2024-12-23', importe:1750.00, partic:72.0864,  precio_vl:24.2764},
+      {fecha:'2025-01-22', importe:1750.00, partic:71.7681,  precio_vl:24.3841},
+      {fecha:'2025-02-24', importe:1750.00, partic:73.0119,  precio_vl:23.9687},
+      {fecha:'2025-03-24', importe:1750.00, partic:76.6798,  precio_vl:22.8222},
+      {fecha:'2025-04-22', importe:1750.00, partic:88.4752,  precio_vl:19.7796},
+      {fecha:'2025-05-22', importe:1750.00, partic:77.0032,  precio_vl:22.7263},
+      {fecha:'2025-06-23', importe:1750.00, partic:73.9447,  precio_vl:23.6663},
+      {fecha:'2025-07-22', importe:1750.00, partic:71.9755,  precio_vl:24.3138},
+      {fecha:'2025-08-22', importe:1750.00, partic:71.9376,  precio_vl:24.3266},
+      {fecha:'2025-09-22', importe:1750.00, partic:71.0945,  precio_vl:24.6151},
+      {fecha:'2025-10-22', importe:1750.00, partic:69.6059,  precio_vl:25.1415},
+      {fecha:'2025-11-24', importe:1750.00, partic:70.9385,  precio_vl:24.6693},
+      {fecha:'2025-12-23', importe:1750.00, partic:67.5033,  precio_vl:25.9247},
+      {fecha:'2026-01-23', importe:1750.00, partic:65.2517,  precio_vl:26.8192},
+      {fecha:'2026-02-12', importe:1544.39, partic:57.3667,  precio_vl:26.9214},
+      {fecha:'2026-02-12', importe: 453.20, partic:16.2207,  precio_vl:27.9397},
+      {fecha:'2026-02-17', importe:1091.50, partic:39.0552,  precio_vl:27.9477},
+      {fecha:'2026-02-23', importe:1750.00, partic:64.2805,  precio_vl:27.2244},
     ]},
-  { id:'sp500',nombre:'Fidelity S&P 500 Index Fund',isin:'IE00BYX5MX67',plataforma:'MyInvestor',color:'#16a34a',total_invertido:15462.09,comision_anual_pct:0.12,enlace:'https://app.myinvestor.es',
+
+  // ── NUMANTIA PATRIMONIO GLOBAL — Renta 4 ─────────────────────────────
+  // ISIN: ES0173311103 — mismo fondo que numantia_mi, custodio diferente.
+  // Suscripciones de mayo 2020 a dic 2023, luego pausa, y de nuevo desde abr 2026.
+  // CORRECCIONES vs versión anterior: añadida entrada 13/08/2021 (faltaba),
+  // corregido VL del 30/08/2021 (era 17.403946, correcto 17.628576),
+  // añadidas 3 nuevas entradas de 2026.
+  { id:'numantia_r4', nombre:'Numantia Patrimonio Global — Renta 4', isin:'ES0173311103',
+    plataforma:'Renta 4', tipo:'rv', color:'#8b72f0', total_invertido:43788.48,
+    comision_anual_pct:1.35, enlace:'https://www.r4.com',
     aportaciones_data:[
-      {fecha:'2023-01-19',importe:1332.40,precio_vl:8.6337},{fecha:'2023-02-02',importe:84.99,precio_vl:9.1299},
-      {fecha:'2023-03-02',importe:84.99,precio_vl:8.9794},{fecha:'2023-04-03',importe:84.99,precio_vl:9.0733},
-      {fecha:'2023-05-02',importe:84.99,precio_vl:8.9937},{fecha:'2023-06-02',importe:84.99,precio_vl:9.5839},
-      {fecha:'2023-07-03',importe:84.99,precio_vl:9.813},{fecha:'2023-08-07',importe:84.99,precio_vl:9.8711},
-      {fecha:'2023-09-05',importe:84.99,precio_vl:10.107},{fecha:'2023-10-02',importe:249.99,precio_vl:9.8402},
-      {fecha:'2023-11-02',importe:249.99,precio_vl:9.8012},{fecha:'2023-12-04',importe:249.99,precio_vl:10.1987},
-      {fecha:'2024-01-05',importe:349.99,precio_vl:10.3361},{fecha:'2024-02-02',importe:349.99,precio_vl:11.0953},
-      {fecha:'2024-03-04',importe:349.98,precio_vl:11.4279},{fecha:'2024-04-02',importe:349.99,precio_vl:11.7085},
-      {fecha:'2024-05-02',importe:349.99,precio_vl:11.4792},{fecha:'2024-06-03',importe:349.99,precio_vl:11.7885},
-      {fecha:'2024-07-02',importe:349.98,precio_vl:12.4464},{fecha:'2024-08-02',importe:349.99,precio_vl:11.8878},
-      {fecha:'2024-09-12',importe:349.98,precio_vl:12.3241},{fecha:'2024-10-02',importe:349.99,precio_vl:12.5859},
-      {fecha:'2024-11-05',importe:349.99,precio_vl:12.9109},{fecha:'2024-12-02',importe:349.98,precio_vl:14.0718},
-      {fecha:'2025-01-02',importe:499.98,precio_vl:13.9247},{fecha:'2025-01-31',importe:499.98,precio_vl:14.1734},
-      {fecha:'2025-02-28',importe:500,precio_vl:13.9774},{fecha:'2025-04-02',importe:500,precio_vl:12.7613},
-      {fecha:'2025-05-02',importe:500,precio_vl:12.2258},{fecha:'2025-06-02',importe:500,precio_vl:12.6994},
-      {fecha:'2025-07-02',importe:500,precio_vl:12.9567},{fecha:'2025-08-04',importe:500,precio_vl:13.4073},
-      {fecha:'2025-09-02',importe:500,precio_vl:13.4862},{fecha:'2025-10-02',importe:500,precio_vl:14.0647},
-      {fecha:'2025-11-04',importe:500,precio_vl:14.463},{fecha:'2025-12-03',importe:500,precio_vl:14.4308},
-      {fecha:'2026-01-05',importe:500,precio_vl:14.4995},{fecha:'2026-02-12',importe:500,precio_vl:14.1455},
-      {fecha:'2026-03-03',importe:500,precio_vl:14.5003},{fecha:'2026-04-06',importe:500,precio_vl:14.1151},
-      {fecha:'2026-05-05',importe:500,precio_vl:15.1595},
+      {fecha:'2020-05-12', importe:1600.00, partic:149.548126, precio_vl:10.698897},
+      {fecha:'2020-06-01', importe: 400.00, partic: 35.369037, precio_vl:11.309327},
+      {fecha:'2020-07-06', importe: 100.00, partic:  8.367459, precio_vl:11.951059},
+      {fecha:'2020-07-31', importe: 250.00, partic: 21.407334, precio_vl:11.678241},
+      {fecha:'2020-08-31', importe: 250.00, partic: 20.633372, precio_vl:12.116294},
+      {fecha:'2020-09-30', importe: 250.00, partic: 20.916412, precio_vl:11.952337},
+      {fecha:'2020-10-30', importe: 250.00, partic: 21.066769, precio_vl:11.867031},
+      {fecha:'2020-11-30', importe: 250.00, partic: 18.021447, precio_vl:13.872360},
+      {fecha:'2020-12-30', importe: 250.00, partic: 17.294344, precio_vl:14.455593},
+      {fecha:'2021-01-15', importe: 250.00, partic: 16.731188, precio_vl:14.942155},
+      {fecha:'2021-02-01', importe: 250.00, partic: 16.521671, precio_vl:15.131641},
+      {fecha:'2021-02-16', importe: 250.00, partic: 15.149729, precio_vl:16.501945},
+      {fecha:'2021-03-01', importe: 250.00, partic: 15.429800, precio_vl:16.202414},
+      {fecha:'2021-03-15', importe: 250.00, partic: 14.792137, precio_vl:16.900871},
+      {fecha:'2021-03-29', importe: 250.00, partic: 15.038285, precio_vl:16.624236},
+      {fecha:'2021-04-19', importe: 250.00, partic: 14.535179, precio_vl:17.199650},
+      {fecha:'2021-04-28', importe: 250.00, partic: 14.495212, precio_vl:17.247075},
+      {fecha:'2021-05-13', importe: 250.00, partic: 15.456460, precio_vl:16.174467},
+      {fecha:'2021-05-28', importe: 250.00, partic: 14.901273, precio_vl:16.777090},
+      {fecha:'2021-06-15', importe: 250.00, partic: 14.675445, precio_vl:17.035259},
+      {fecha:'2021-06-28', importe: 250.00, partic: 14.193910, precio_vl:17.613188},
+      {fecha:'2021-07-15', importe: 250.00, partic: 14.534872, precio_vl:17.200014},
+      {fecha:'2021-07-28', importe: 250.00, partic: 14.434734, precio_vl:17.319336},
+      {fecha:'2021-08-13', importe: 250.00, partic: 14.383235, precio_vl:17.381347},
+      {fecha:'2021-08-30', importe: 250.00, partic: 14.181520, precio_vl:17.628576},
+      {fecha:'2021-09-16', importe: 250.00, partic: 14.258764, precio_vl:17.533076},
+      {fecha:'2021-09-28', importe: 250.00, partic: 14.477292, precio_vl:17.268423},
+      {fecha:'2021-10-28', importe: 500.00, partic: 26.901662, precio_vl:18.586212},
+      {fecha:'2021-11-29', importe: 500.00, partic: 26.593350, precio_vl:18.801693},
+      {fecha:'2021-12-29', importe: 500.00, partic: 26.962211, precio_vl:18.544473},
+      {fecha:'2022-01-28', importe:1170.00, partic: 69.376953, precio_vl:16.864390},
+      {fecha:'2022-02-28', importe:1170.00, partic: 67.826484, precio_vl:17.249899},
+      {fecha:'2022-03-28', importe:1170.00, partic: 62.019567, precio_vl:18.865014},
+      {fecha:'2022-04-28', importe:1170.00, partic: 65.616912, precio_vl:17.830769},
+      {fecha:'2022-05-31', importe:1170.00, partic: 71.300805, precio_vl:16.409352},
+      {fecha:'2022-06-28', importe:1170.00, partic: 77.439949, precio_vl:15.108481},
+      {fecha:'2022-07-28', importe:1170.00, partic: 70.652874, precio_vl:16.559836},
+      {fecha:'2022-08-29', importe:1170.00, partic: 71.095680, precio_vl:16.456696},
+      {fecha:'2022-09-28', importe:1170.00, partic: 75.735989, precio_vl:15.448402},
+      {fecha:'2022-10-28', importe:1170.00, partic: 77.226744, precio_vl:15.150192},
+      {fecha:'2022-11-28', importe:1170.00, partic: 77.592031, precio_vl:15.078868},
+      {fecha:'2022-12-28', importe:1170.00, partic: 85.407719, precio_vl:13.698996},
+      {fecha:'2023-01-30', importe:1500.00, partic: 97.327699, precio_vl:15.411851},
+      {fecha:'2023-02-28', importe:1500.00, partic: 94.397157, precio_vl:15.890309},
+      {fecha:'2023-03-28', importe:1500.00, partic: 99.720981, precio_vl:15.041970},
+      {fecha:'2023-04-28', importe:1500.00, partic: 96.508950, precio_vl:15.542600},
+      {fecha:'2023-05-30', importe:1500.00, partic: 92.790356, precio_vl:16.165473},
+      {fecha:'2023-06-28', importe:1500.00, partic: 88.451944, precio_vl:16.958361},
+      {fecha:'2023-07-28', importe:1500.00, partic: 83.636628, precio_vl:17.934726},
+      {fecha:'2023-08-28', importe:1500.00, partic: 86.187351, precio_vl:17.403946},
+      {fecha:'2023-09-28', importe:1500.00, partic: 85.672703, precio_vl:17.508494},
+      {fecha:'2023-10-30', importe:1500.00, partic: 92.616896, precio_vl:16.195749},
+      {fecha:'2023-11-28', importe:1500.00, partic: 85.345185, precio_vl:17.575684},
+      {fecha:'2023-12-28', importe:1500.00, partic: 78.663909, precio_vl:19.068465},
+      {fecha:'2026-04-07', importe: 200.00, partic:  7.437312, precio_vl:26.891437},
+      {fecha:'2026-05-06', importe: 200.00, partic:  7.275702, precio_vl:27.488755},
+      {fecha:'2026-05-22', importe:1548.48, partic: 54.728110, precio_vl:28.294052},
+      {fecha:'2026-06-03', importe: 200.00, partic:  7.087565, precio_vl:28.218435},
     ]},
-  { id:'msci',nombre:'Fidelity MSCI World Index Fund',isin:'IE00BYX5NX33',plataforma:'MyInvestor',color:'#e07a30',total_invertido:4260.75,comision_anual_pct:0.12,enlace:'https://app.myinvestor.es',
+
+  // ── FIDELITY S&P 500 INDEX FUND P-ACC-EUR ─────────────────────────────
+  // ISIN: IE00BYX5MX67 — actualizado con aportación junio 2026
+  { id:'sp500', nombre:'Fidelity S&P 500 Index Fund', isin:'IE00BYX5MX67',
+    plataforma:'MyInvestor', tipo:'rv', color:'#16a34a', total_invertido:15962.09,
+    comision_anual_pct:0.12, enlace:'https://app.myinvestor.es',
     aportaciones_data:[
-      {fecha:'2023-01-20',importe:1330.99,precio_vl:7.9337},{fecha:'2023-02-03',importe:84.99,precio_vl:8.1918},
-      {fecha:'2023-03-03',importe:84.99,precio_vl:8.2227},{fecha:'2023-04-04',importe:84.99,precio_vl:8.0712},
-      {fecha:'2023-05-03',importe:84.99,precio_vl:8.0225},{fecha:'2023-06-05',importe:84.99,precio_vl:8.5194},
-      {fecha:'2023-07-05',importe:84.99,precio_vl:8.6645},{fecha:'2023-08-08',importe:84.99,precio_vl:8.6929},
-      {fecha:'2023-09-05',importe:84.99,precio_vl:8.855},{fecha:'2023-10-03',importe:149.99,precio_vl:8.5323},
-      {fecha:'2023-11-03',importe:149.99,precio_vl:8.5831},{fecha:'2023-12-05',importe:149.99,precio_vl:8.953},
-      {fecha:'2024-01-05',importe:149.99,precio_vl:9.1041},{fecha:'2024-02-05',importe:149.99,precio_vl:9.6606},
-      {fecha:'2024-03-05',importe:149.99,precio_vl:9.8477},{fecha:'2024-04-03',importe:149.99,precio_vl:10.1269},
-      {fecha:'2024-05-03',importe:149.99,precio_vl:10.0516},{fecha:'2024-06-04',importe:149.99,precio_vl:10.2403},
-      {fecha:'2024-07-03',importe:149.99,precio_vl:10.6451},{fecha:'2024-08-05',importe:149.99,precio_vl:9.8361},
-      {fecha:'2024-09-03',importe:149.99,precio_vl:10.5315},{fecha:'2024-10-03',importe:149.99,precio_vl:10.8046},
-      {fecha:'2024-11-05',importe:149.99,precio_vl:10.9746},{fecha:'2024-12-03',importe:149.98,precio_vl:11.815},
+      {fecha:'2023-01-19', importe:1332.40, partic:154.3217, precio_vl:8.6337},
+      {fecha:'2023-02-02', importe:  84.99, partic:  9.3093, precio_vl:9.1299},
+      {fecha:'2023-03-02', importe:  84.99, partic:  9.4654, precio_vl:8.9794},
+      {fecha:'2023-04-03', importe:  84.99, partic:  9.3678, precio_vl:9.0733},
+      {fecha:'2023-05-02', importe:  84.99, partic:  9.4501, precio_vl:8.9937},
+      {fecha:'2023-06-02', importe:  84.99, partic:  8.8683, precio_vl:9.5839},
+      {fecha:'2023-07-03', importe:  84.99, partic:  8.6608, precio_vl:9.8130},
+      {fecha:'2023-08-07', importe:  84.99, partic:  8.6105, precio_vl:9.8711},
+      {fecha:'2023-09-05', importe:  84.99, partic:  8.4085, precio_vl:10.107},
+      {fecha:'2023-10-02', importe: 249.99, partic: 25.4048, precio_vl:9.8402},
+      {fecha:'2023-11-02', importe: 249.99, partic: 25.5064, precio_vl:9.8012},
+      {fecha:'2023-12-04', importe: 249.99, partic: 24.5120, precio_vl:10.1987},
+      {fecha:'2024-01-05', importe: 349.99, partic: 33.8609, precio_vl:10.3361},
+      {fecha:'2024-02-02', importe: 349.99, partic: 31.5448, precio_vl:11.0953},
+      {fecha:'2024-03-04', importe: 349.98, partic: 30.6261, precio_vl:11.4279},
+      {fecha:'2024-04-02', importe: 349.99, partic: 29.9082, precio_vl:11.7085},
+      {fecha:'2024-05-02', importe: 349.99, partic: 30.4911, precio_vl:11.4792},
+      {fecha:'2024-06-03', importe: 349.99, partic: 29.6906, precio_vl:11.7885},
+      {fecha:'2024-07-02', importe: 349.98, partic: 28.1251, precio_vl:12.4464},
+      {fecha:'2024-08-02', importe: 349.99, partic: 29.4428, precio_vl:11.8878},
+      {fecha:'2024-09-12', importe: 349.98, partic: 28.3944, precio_vl:12.3241},
+      {fecha:'2024-10-02', importe: 349.99, partic: 27.8090, precio_vl:12.5859},
+      {fecha:'2024-11-05', importe: 349.99, partic: 27.1086, precio_vl:12.9109},
+      {fecha:'2024-12-02', importe: 349.98, partic: 24.8705, precio_vl:14.0718},
+      {fecha:'2025-01-02', importe: 499.98, partic: 35.9152, precio_vl:13.9247},
+      {fecha:'2025-01-31', importe: 499.98, partic: 35.2756, precio_vl:14.1734},
+      {fecha:'2025-02-28', importe: 500.00, partic: 35.7740, precio_vl:13.9774},
+      {fecha:'2025-04-02', importe: 500.00, partic: 39.1912, precio_vl:12.7613},
+      {fecha:'2025-05-02', importe: 500.00, partic: 40.8978, precio_vl:12.2258},
+      {fecha:'2025-06-02', importe: 500.00, partic: 39.3726, precio_vl:12.6994},
+      {fecha:'2025-07-02', importe: 500.00, partic: 38.5909, precio_vl:12.9567},
+      {fecha:'2025-08-04', importe: 500.00, partic: 37.2953, precio_vl:13.4073},
+      {fecha:'2025-09-02', importe: 500.00, partic: 37.0756, precio_vl:13.4862},
+      {fecha:'2025-10-02', importe: 500.00, partic: 35.5527, precio_vl:14.0647},
+      {fecha:'2025-11-04', importe: 500.00, partic: 34.5741, precio_vl:14.4630},
+      {fecha:'2025-12-03', importe: 500.00, partic: 34.6509, precio_vl:14.4308},
+      {fecha:'2026-01-05', importe: 500.00, partic: 34.4841, precio_vl:14.4995},
+      {fecha:'2026-02-12', importe: 500.00, partic: 35.3528, precio_vl:14.1455},
+      {fecha:'2026-03-03', importe: 500.00, partic: 34.4821, precio_vl:14.5003},
+      {fecha:'2026-04-06', importe: 500.00, partic: 35.4270, precio_vl:14.1151},
+      {fecha:'2026-05-05', importe: 500.00, partic: 32.9831, precio_vl:15.1595},
+      {fecha:'2026-06-03', importe: 500.00, partic: 31.1580, precio_vl:16.0472},
+    ]},
+
+  // ── FIDELITY MSCI WORLD INDEX FUND P-ACC-EUR ──────────────────────────
+  // ISIN: IE00BYX5NX33 — sin cambios, última aportación dic 2024
+  { id:'msci', nombre:'Fidelity MSCI World Index Fund', isin:'IE00BYX5NX33',
+    plataforma:'MyInvestor', tipo:'rv', color:'#e07a30', total_invertido:4260.75,
+    comision_anual_pct:0.12, enlace:'https://app.myinvestor.es',
+    aportaciones_data:[
+      {fecha:'2023-01-20', importe:1330.99, partic:167.7659, precio_vl:7.9337},
+      {fecha:'2023-02-03', importe:  84.99, partic: 10.3746, precio_vl:8.1918},
+      {fecha:'2023-03-03', importe:  84.99, partic: 10.3371, precio_vl:8.2227},
+      {fecha:'2023-04-04', importe:  84.99, partic: 10.5295, precio_vl:8.0712},
+      {fecha:'2023-05-03', importe:  84.99, partic: 10.5952, precio_vl:8.0225},
+      {fecha:'2023-06-05', importe:  84.99, partic:  9.9769, precio_vl:8.5194},
+      {fecha:'2023-07-05', importe:  84.99, partic:  9.8095, precio_vl:8.6645},
+      {fecha:'2023-08-08', importe:  84.99, partic:  9.7772, precio_vl:8.6929},
+      {fecha:'2023-09-05', importe:  84.99, partic:  9.5972, precio_vl:8.8550},
+      {fecha:'2023-10-03', importe: 149.99, partic: 17.5786, precio_vl:8.5323},
+      {fecha:'2023-11-03', importe: 149.99, partic: 17.4763, precio_vl:8.5831},
+      {fecha:'2023-12-05', importe: 149.99, partic: 16.7523, precio_vl:8.9530},
+      {fecha:'2024-01-05', importe: 149.99, partic: 16.4754, precio_vl:9.1041},
+      {fecha:'2024-02-05', importe: 149.99, partic: 15.5271, precio_vl:9.6606},
+      {fecha:'2024-03-05', importe: 149.99, partic: 15.2363, precio_vl:9.8477},
+      {fecha:'2024-04-03', importe: 149.99, partic: 14.8146, precio_vl:10.1269},
+      {fecha:'2024-05-03', importe: 149.99, partic: 14.9233, precio_vl:10.0516},
+      {fecha:'2024-06-04', importe: 149.99, partic: 14.6462, precio_vl:10.2403},
+      {fecha:'2024-07-03', importe: 149.99, partic: 14.0904, precio_vl:10.6451},
+      {fecha:'2024-08-05', importe: 149.99, partic: 15.2489, precio_vl: 9.8361},
+      {fecha:'2024-09-03', importe: 149.99, partic: 14.2380, precio_vl:10.5315},
+      {fecha:'2024-10-03', importe: 149.99, partic: 13.8820, precio_vl:10.8046},
+      {fecha:'2024-11-05', importe: 149.99, partic: 13.6676, precio_vl:10.9746},
+      {fecha:'2024-12-03', importe: 149.98, partic: 12.6912, precio_vl:11.8150},
+    ]},
+
+  // ── GROUPAMA TRÉSORERIE IC ─────────────────────────────────────────────
+  // ISIN: FR0000989626 — fondo monetario (OPCVM). Grupo: Depósitos y fondos monetarios.
+  // Aportaciones: ambas el 17/02/2026 (origen: traspasos del Numantia MI)
+  { id:'groupama', nombre:'Groupama Trésorerie IC', isin:'FR0000989626',
+    plataforma:'MyInvestor', tipo:'monetario', color:'#14b8a6', total_invertido:91219.29,
+    comision_anual_pct:0.09, enlace:'https://app.myinvestor.es',
+    aportaciones_data:[
+      {fecha:'2026-02-17', importe:41221.89, partic:0.9366, precio_vl:44012.26},
+      {fecha:'2026-02-17', importe:49997.93, partic:1.1360, precio_vl:44012.26},
     ]},
 ];
 
@@ -830,6 +1158,7 @@ async function syncPokerCajeros() {
 // HELPERS GENERALES
 // ═══════════════════════════════════════════════════
 function fmt(n){ if(n==null||isNaN(n)) return '—'; return n.toLocaleString('es-ES',{maximumFractionDigits:0})+'€'; }
+function fmt2(n){ if(n==null||isNaN(n)) return '—'; return n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€'; }
 function fmtK(n){ if(n==null||isNaN(n)) return '—'; const a=Math.abs(n),s=n<0?'-':''; if(a>=1e6) return s+(a/1e6).toFixed(2)+'M€'; if(a>=1e3) return s+(a/1e3).toFixed(1)+'K€'; return s+Math.round(a)+'€'; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function toast(msg, err=false){ const t=document.getElementById('toast'); t.textContent=msg; t.className='show'+(err?' err':''); if(err) t.style.background='var(--red)'; else t.style.background='#1a1a2e'; setTimeout(()=>{t.className='';},3200); }
@@ -947,6 +1276,12 @@ async function syncAll() {
     _cache.vliq = {};
     (rawVliq || []).forEach(r => { _cache.vliq[r.fondo_id] = { valor:r.valor, fecha:r.fecha }; });
 
+    // Operaciones extra de fondos (registradas desde la pestaña Inversiones)
+    try {
+      const rawInvOps = await sb('inv_operaciones', 'GET', null, '?order=fecha.desc&limit=500');
+      _cache.invOps = rawInvOps || [];
+    } catch(e) { _cache.invOps = []; } // tabla puede no existir aún
+
     _appReady = true;
     const _cp = _currentPage || 'resumen';
     document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
@@ -1001,7 +1336,9 @@ function buildCurrentPage(){
   else if (n === 'saldos') buildSaldosEditor();
   else if (n === 'evolucion') buildEvolucion();
   else if (n === 'movimientos') { buildMovSels(); showMovTab('nuevo'); }
-  // Las páginas restantes se añaden en los siguientes pasos del plan acordado.
+  else if (n === 'gastos') buildGastos();
+  else if (n === 'ingresos') buildIngresos();
+  else if (n === 'inversiones') buildInversiones();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1641,19 +1978,719 @@ function renderMovs(){
 }
 
 async function borrarMov(id){
-  _cache.movs = (_cache.movs||[]).filter(m => Number(m.id)!==Number(id));
-  try { await sb('movimientos', 'DELETE', null, `?id=eq.${id}`); }
-  catch(e) { toast('Eliminado localmente, pero falló en la nube: ' + e.message, true); }
-  renderMovs();
-  toast('✓ Eliminado');
+  const m=(_cache.movs||[]).find(x=>Number(x.id)===Number(id));
+  if(m){
+    const tiposConOrigen=['retirada','traspaso','dep_poker','ret_poker','compra_btc','venta_btc','aportacion','compra_accion'];
+    const tiposConDestino=['aportacion','traspaso','dep_poker','ret_poker','venta_btc','ingreso_ext','venta_accion'];
+    const hayOrigen=m.origen&&findGrupoForSub(m.origen)&&tiposConOrigen.includes(m.tipo);
+    const hayDestino=m.destino&&findGrupoForSub(m.destino)&&tiposConDestino.includes(m.tipo);
+    if(hayOrigen){
+      if(esSubcuentaPokerSincronizada(m.origen)) await updateSpinsCajero(m.origen, m.importe);
+      else await updateSaldoLocal(m.origen, m.importe);
+    }
+    if(hayDestino){
+      if(esSubcuentaPokerSincronizada(m.destino)) await updateSpinsCajero(m.destino, -m.importe);
+      else await updateSaldoLocal(m.destino, -m.importe);
+    }
+    if(m.tipo==='dep_poker'||m.tipo==='ret_poker'){
+      try{ await crossDeleteFromPatrimonio(m); }catch(e){ console.error('crossDelete falló:',e); }
+    }
+  }
+  _cache.movs=(_cache.movs||[]).filter(x=>Number(x.id)!==Number(id));
+  try{ await sb('movimientos','DELETE',null,`?id=eq.${id}`); }
+  catch(e){ toast('Eliminado localmente, error en nube: '+e.message,true); }
+  renderMovs(); updateHeader();
+  toast('✓ Eliminado y saldos revertidos');
 }
 
-// ── Cruce con Spins Tracker: cuando un movimiento de Spins toca una sala de poker ──
-// estándar, se replica aquí. Llamado desde el archivo de Spins Tracker (mismo proyecto Supabase).
-async function crossWriteFromSpins(fecha, tipo, origen, destino, cantidad, notas){
-  const tipoPat = tipo === 'retirada' ? 'ret_poker' : 'dep_poker';
-  const m = { fecha, tipo:tipoPat, importe:cantidad, origen:mapSubcuentaPatrimonio(origen), destino:mapSubcuentaPatrimonio(destino), nota:(notas?notas+' ':'')+'(desde Spins Tracker)', es_historico:false, id:Date.now() };
-  await sb('movimientos', 'POST', m);
+// Borra en spins_movimientos la fila espejo de un movimiento creado desde Patrimonio.
+// Solo limpia el historial — el cajero ya fue revertido arriba.
+async function crossDeleteFromPatrimonio(m){
+  const inv={};
+  for(const sala in PATRIMONIO_SUBCUENTA_MAP) inv[PATRIMONIO_SUBCUENTA_MAP[sala]]=sala;
+  const orS=inv[m.origen]||m.origen, dstS=inv[m.destino]||m.destino;
+  // Sin filtro por nota: funciona tanto si fue creado desde Patrimonio como desde Spins.
+  const rows=await sb('spins_movimientos','GET',null,
+    `?fecha=eq.${m.fecha}&cantidad=eq.${m.importe}&origen=eq.${encodeURIComponent(orS)}&destino=eq.${encodeURIComponent(dstS)}`);
+  if(rows&&rows.length) await sb('spins_movimientos','DELETE',null,`?id=eq.${rows[0].id}`);
+}
+
+// ═══════════════════════════════════════════════════
+// PÁGINAS: GASTOS + INGRESOS
+// Sistema de categorías personalizadas con análisis mensual/anual.
+// Las categorías y conceptos se guardan en localStorage (pat_gasto_cats / pat_ingreso_cats).
+// Los registros individuales se persisten en Supabase (tablas gastos / ingresos).
+// ═══════════════════════════════════════════════════
+
+const GASTO_CATS_DEFAULT = [
+  { id:'alimentacion', label:'Alimentación', color:'#16a34a', conceptos:['Supermercado','Mercado','Otros alimentación'] },
+  { id:'deporte', label:'Deporte y salud', color:'#3b8ef0', conceptos:['Gimnasio','Clases pádel','Farmacia','Médico','Otros deporte'] },
+  { id:'restaurantes', label:'Restaurantes', color:'#e07a30', conceptos:['Comidas','Cenas','Otros restaurantes'] },
+  { id:'bares', label:'Bares y discotecas', color:'#d060a0', conceptos:['Copas','Discoteca','Otros bares'] },
+  { id:'suscripciones', label:'Suscripciones', color:'#8b72f0', conceptos:['Netflix','Spotify','Amazon Prime','Otras suscripciones'] },
+  { id:'ropa', label:'Ropa y personal', color:'#d99a1b', conceptos:['Ropa','Calzado','Higiene','Otros personal'] },
+  { id:'transporte', label:'Transporte', color:'#14b8a6', conceptos:['Gasolina','Transporte público','Taxi/Uber','Otros transporte'] },
+  { id:'hogar', label:'Hogar', color:'#65a30d', conceptos:['Alquiler','Luz/Agua/Gas','Internet','Otros hogar'] },
+  { id:'otros_g', label:'Otros gastos', color:'#667085', conceptos:['Otros'] },
+];
+const INGRESO_CATS_DEFAULT = [
+  { id:'apuestas', label:'Apuestas deportivas', color:'#8b72f0', conceptos:['Beneficio apuestas'] },
+  { id:'inversiones', label:'Inversiones', color:'#3b8ef0', conceptos:['Venta fondos','Venta acciones','Intereses depósito'] },
+  { id:'dividendos', label:'Dividendos', color:'#16a34a', conceptos:['Santander','Otros dividendos'] },
+  { id:'regalos', label:'Regalos', color:'#d99a1b', conceptos:['Cumpleaños','Navidad','Otros regalos'] },
+  { id:'trabajo', label:'Trabajo / Freelance', color:'#14b8a6', conceptos:['Sueldo','Freelance','Otros trabajo'] },
+  { id:'otros_i', label:'Otros ingresos', color:'#667085', conceptos:['Otros'] },
+];
+
+let gastoCats = JSON.parse(localStorage.getItem('pat_gasto_cats')||'null') || JSON.parse(JSON.stringify(GASTO_CATS_DEFAULT));
+let ingresoCats = JSON.parse(localStorage.getItem('pat_ingreso_cats')||'null') || JSON.parse(JSON.stringify(INGRESO_CATS_DEFAULT));
+function saveGastoCats(){ localStorage.setItem('pat_gasto_cats', JSON.stringify(gastoCats)); }
+function saveIngresoCats(){ localStorage.setItem('pat_ingreso_cats', JSON.stringify(ingresoCats)); }
+
+// ── Tabs ──────────────────────────────────────────
+function setSubTab(prefix, name){
+  ['nuevo','historial','analisis','cats'].forEach(t=>{
+    const el=document.getElementById(`${prefix}tab-${t}`);
+    if(el) el.style.display=(t===name?'block':'none');
+    const btn=document.getElementById(`${prefix}tab-btn-${t}`);
+    if(btn){ btn.style.background=t===name?'var(--accent-soft)':'var(--surface)'; btn.style.color=t===name?'var(--accent)':'var(--muted)'; }
+  });
+}
+function showGastosTab(t){ setSubTab('g',''); setSubTab('g',t); if(t==='historial'){ buildMesSel_gastos(); renderGastos(); } if(t==='analisis'){ buildMesSel_gastos(); buildGastosAnalisis(); } if(t==='cats') buildGastosCatsEditor(); }
+function showIngresosTab(t){ setSubTab('i',''); setSubTab('i',t); if(t==='historial'){ buildMesSel_ingresos(); renderIngresos(); } if(t==='analisis'){ buildMesSel_ingresos(); buildIngresosAnalisis(); } if(t==='cats') buildIngresosCatsEditor(); }
+
+// ── Helpers de meses ──────────────────────────────
+function buildMesSelector(selectId, allItems, dateField){
+  const meses=[...new Set(allItems.map(x=>(x[dateField]||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  const mesActual=today().slice(0,7);
+  if(!meses.includes(mesActual)) meses.unshift(mesActual);
+  const sel=document.getElementById(selectId); if(!sel) return;
+  const cur=sel.value||mesActual;
+  sel.innerHTML=meses.map(m=>`<option value="${m}"${m===cur?' selected':''}>${MESES[parseInt(m.split('-')[1])-1]} ${m.split('-')[0]}</option>`).join('');
+  if(!sel.value) sel.value=mesActual;
+}
+function getMesSel(id){ return document.getElementById(id)?.value||today().slice(0,7); }
+function getAño(mes){ return mes.slice(0,4); }
+
+// ── Selectores de categoría → concepto ───────────
+function buildCatSelector(selId, cats){
+  const sel=document.getElementById(selId); if(!sel) return;
+  sel.innerHTML='<option value="">— Selecciona —</option>'+cats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+}
+function buildConceptoSelector(selId, cats, catId){
+  const sel=document.getElementById(selId); if(!sel) return;
+  const cat=cats.find(c=>c.id===catId);
+  sel.innerHTML=cat?cat.conceptos.map(c=>`<option value="${c}">${c}</option>`).join(''):'<option value="">— Selecciona categoría —</option>';
+}
+function buildCuentaSelector(selId){
+  const sel=document.getElementById(selId); if(!sel) return;
+  sel.innerHTML='<option value="">— Ninguna —</option>';
+  GRUPOS.forEach(g=>{ const og=document.createElement('optgroup'); og.label=g.label; g.subs.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; og.appendChild(o); }); sel.appendChild(og); });
+}
+
+// ── GASTOS ────────────────────────────────────────
+function buildGastos(){
+  document.getElementById('g-fecha').value=today();
+  buildCatSelector('g-cat', gastoCats);
+  buildConceptoSelector('g-concepto', gastoCats, '');
+  buildCuentaSelector('g-cuenta');
+  buildMesSel_gastos();
+  showGastosTab('nuevo');
+  applyPrivacyState();
+}
+function buildMesSel_gastos(){
+  buildMesSelector('g-filtro-mes', _cache.gastos||[], 'fecha');
+  buildMesSelector('g-analisis-mes', _cache.gastos||[], 'fecha');
+  const allMeses=[...new Set((_cache.gastos||[]).map(x=>(x.fecha||'').slice(0,7)))].sort().reverse();
+  const filtSel=document.getElementById('g-filtro-cat'); if(!filtSel) return;
+  filtSel.innerHTML='<option value="">Todas las categorías</option>'+gastoCats.map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
+}
+function onGastoCatChange(){ buildConceptoSelector('g-concepto', gastoCats, document.getElementById('g-cat').value); }
+
+async function guardarGasto(){
+  const fecha=document.getElementById('g-fecha').value;
+  const importe=parseFloat(document.getElementById('g-importe').value);
+  if(!fecha||!importe){ toast('Rellena fecha e importe',true); return; }
+  const cat=document.getElementById('g-cat').value;
+  const concepto=document.getElementById('g-concepto').value;
+  const cuenta=document.getElementById('g-cuenta').value;
+  const nota=document.getElementById('g-nota').value.trim();
+  if(!cat||!concepto){ toast('Selecciona categoría y concepto',true); return; }
+  const catLabel=gastoCats.find(c=>c.id===cat)?.label||cat;
+  const g={fecha,importe,cat,cat_label:catLabel,descripcion:concepto,cuenta,nota,id:Date.now()};
+  if(!_cache.gastos) _cache.gastos=[];
+  _cache.gastos.unshift(g);
+  try{ await sb('gastos','POST',g); }
+  catch(e){ toast('Error sincronizando: '+e.message,true); }
+  if(cuenta&&findGrupoForSub(cuenta)) await updateSaldoLocal(cuenta,-importe);
+  ['g-importe','g-nota'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('g-cat').value=''; document.getElementById('g-concepto').value='';
+  toast('✓ Gasto registrado'); updateHeader();
+}
+
+function renderGastos(){
+  const el=document.getElementById('gastos-list'); if(!el) return;
+  const mes=getMesSel('g-filtro-mes'), catFiltro=document.getElementById('g-filtro-cat')?.value||'';
+  let items=(_cache.gastos||[]).filter(g=>(g.fecha||'').slice(0,7)===mes);
+  if(catFiltro) items=items.filter(g=>g.cat===catFiltro);
+  if(!items.length){el.innerHTML='<div class="empty-state"><p>Sin gastos este mes.</p></div>';return;}
+  el.innerHTML=items.map(g=>`<div class="item-row">
+    <div>
+      <span class="item-tag out">${g.cat_label||g.cat||'—'}</span>
+      <div class="item-route">${g.descripcion||'—'}${g.cuenta?' · '+g.cuenta:''}</div>
+      <div class="item-date">${g.fecha}${g.nota?' · '+g.nota:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="item-amount out private-val">-${fmt2(g.importe)}</div>
+      <button class="icon-btn danger" onclick="borrarGasto(${g.id})">✕</button>
+    </div>
+  </div>`).join('');
+  applyPrivacyState();
+}
+
+async function borrarGasto(id){
+  const g=(_cache.gastos||[]).find(x=>Number(x.id)===Number(id));
+  if(g?.cuenta&&findGrupoForSub(g.cuenta)) await updateSaldoLocal(g.cuenta, g.importe);
+  _cache.gastos=(_cache.gastos||[]).filter(x=>Number(x.id)!==Number(id));
+  try{ await sb('gastos','DELETE',null,`?id=eq.${id}`); }
+  catch(e){ toast('Error en nube: '+e.message,true); }
+  renderGastos(); updateHeader(); toast('✓ Gasto eliminado');
+}
+
+function buildGastosAnalisis(){
+  const mes=getMesSel('g-analisis-mes');
+  const año=getAño(mes);
+  const gastosMes=(_cache.gastos||[]).filter(g=>(g.fecha||'').slice(0,7)===mes);
+  const gastosAño=(_cache.gastos||[]).filter(g=>(g.fecha||'').startsWith(año));
+  const totalMes=gastosMes.reduce((a,g)=>a+g.importe,0);
+  const totalAño=gastosAño.reduce((a,g)=>a+g.importe,0);
+  const el=document.getElementById('ga-total-mes'); if(el) el.textContent='-'+fmt2(totalMes);
+  const el2=document.getElementById('ga-total-año'); if(el2) el2.textContent='-'+fmt2(totalAño);
+  const byMes={}, byAño={};
+  gastoCats.forEach(c=>{ byMes[c.id]=0; byAño[c.id]=0; });
+  gastosMes.forEach(g=>{ if(byMes[g.cat]!==undefined) byMes[g.cat]+=g.importe; });
+  gastosAño.forEach(g=>{ if(byAño[g.cat]!==undefined) byAño[g.cat]+=g.importe; });
+  const catsConDatos=gastoCats.filter(c=>byMes[c.id]>0||byAño[c.id]>0);
+  // Donut
+  mkChart('ch-gastos-donut',{type:'doughnut',data:{labels:catsConDatos.map(c=>c.label),datasets:[{data:catsConDatos.map(c=>byMes[c.id]),backgroundColor:catsConDatos.map(c=>c.color+'cc'),borderColor:catsConDatos.map(c=>c.color),borderWidth:1}]},options:{plugins:{legend:{position:'bottom',labels:{color:getMutedColor(),font:{family:"'DM Sans'",size:10},padding:10,boxWidth:10}},tooltip:{callbacks:{label:ctx=>_privacyOn?` ${ctx.label}: ••••`:` ${ctx.label}: ${fmt2(ctx.raw)} (${totalMes>0?((ctx.raw/totalMes)*100).toFixed(1):0}%)`}}}}});
+  // Barras comparativas mes vs año/12
+  const cd=getCD();
+  mkChart('ch-gastos-cats',{type:'bar',data:{labels:catsConDatos.map(c=>c.label),datasets:[{label:'Este mes',data:catsConDatos.map(c=>byMes[c.id]),backgroundColor:catsConDatos.map(c=>c.color+'cc'),borderRadius:4},{label:'Media mensual (año)',data:catsConDatos.map(c=>byAño[c.id]/12),backgroundColor:catsConDatos.map(c=>c.color+'44'),borderRadius:4}]},options:{...cd,plugins:{...cd.plugins,legend:{display:true,labels:{color:getMutedColor(),font:{size:10}}}},scales:{...cd.scales,y:{...cd.scales.y,ticks:{...cd.scales.y.ticks,callback:v=>_privacyOn?'••••':fmt(v)}}}}});
+  // Tabla
+  document.getElementById('tbl-gastos-cats').innerHTML=catsConDatos.map(c=>`<tr>
+    <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:6px"></span>${c.label}</td>
+    <td class="private-val ${byMes[c.id]>0?'down':''}">${byMes[c.id]>0?'-'+fmt2(byMes[c.id]):'—'}</td>
+    <td class="private-val ${byAño[c.id]>0?'down':''}">${byAño[c.id]>0?'-'+fmt2(byAño[c.id]):'—'}</td>
+    <td>${totalMes>0?((byMes[c.id]/totalMes)*100).toFixed(1)+'%':'—'}</td>
+  </tr>`).join('');
+  applyPrivacyState();
+}
+
+function buildGastosCatsEditor(){
+  const el=document.getElementById('gastos-cats-editor'); if(!el) return;
+  el.innerHTML=gastoCats.map(c=>`<div class="group-block" style="margin-bottom:8px">
+    <div class="group-header">
+      <div class="group-name"><div class="group-dot" style="background:${c.color}"></div><span style="color:${c.color}">${c.label}</span></div>
+      <div style="display:flex;gap:5px">
+        <button class="icon-btn" onclick="addGastoConcepto('${c.id}')">＋</button>
+        <button class="icon-btn danger" onclick="delGastoCat('${c.id}')">🗑</button>
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">
+      ${c.conceptos.map(co=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:12px">${co}<button onclick="delGastoConcepto('${c.id}','${co.replace(/'/g,"\\'")}')\" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button></span>`).join('')}
+    </div>
+  </div>`).join('');
+}
+
+function addGastoCat(){
+  showEditorModal('Nueva categoría de gasto','ej: Viajes, Mascotas...','',label=>{
+    const id='gcat_'+Date.now();
+    gastoCats.push({id,label,color:'#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0'),conceptos:[]});
+    saveGastoCats(); buildGastosCatsEditor(); buildCatSelector('g-cat',gastoCats);
+    toast('✓ Categoría creada');
+  });
+}
+function delGastoCat(id){ gastoCats=gastoCats.filter(c=>c.id!==id); saveGastoCats(); buildGastosCatsEditor(); buildCatSelector('g-cat',gastoCats); }
+function addGastoConcepto(catId){
+  showEditorModal('Nuevo concepto','ej: Clases pádel, Spotify...','',label=>{
+    const c=gastoCats.find(x=>x.id===catId); if(!c) return;
+    c.conceptos.push(label); saveGastoCats(); buildGastosCatsEditor(); toast('✓ Concepto añadido');
+  });
+}
+function delGastoConcepto(catId,concepto){ const c=gastoCats.find(x=>x.id===catId); if(!c) return; c.conceptos=c.conceptos.filter(x=>x!==concepto); saveGastoCats(); buildGastosCatsEditor(); }
+
+// ── INGRESOS ──────────────────────────────────────
+function buildIngresos(){
+  document.getElementById('i-fecha').value=today();
+  buildCatSelector('i-cat', ingresoCats);
+  buildConceptoSelector('i-concepto', ingresoCats, '');
+  buildCuentaSelector('i-cuenta');
+  buildMesSel_ingresos();
+  calcPokerAutoMes();
+  showIngresosTab('nuevo');
+  applyPrivacyState();
+}
+function buildMesSel_ingresos(){
+  buildMesSelector('i-filtro-mes', _cache.ingresos||[], 'fecha');
+  buildMesSelector('i-analisis-mes', _cache.ingresos||[], 'fecha');
+}
+function onIngresoCatChange(){ buildConceptoSelector('i-concepto', ingresoCats, document.getElementById('i-cat').value); }
+
+// Cálculo automático de ingresos de poker del mes:
+// Beneficio = suma de (ganado - apostado) de todas las sesiones del mes en Spins
+function calcPokerAutoMes(){
+  const mes=today().slice(0,7);
+  const sesMes=(allSesiones||_cache.spinsSesiones||[]).filter?.(s=>(s.fecha||'').slice(0,7)===mes)||[];
+  // Si hay datos de sesiones (integración Spins activa), calculamos directamente
+  if(sesMes.length){
+    const beneficio=sesMes.reduce((a,s)=>a+(s.ganado-s.total_apostado),0);
+    const el=document.getElementById('ing-poker-auto'); if(el){ el.textContent=(beneficio>=0?'+':'')+fmt(Math.abs(beneficio)); el.className='stat-value '+(beneficio>=0?'pos':'neg')+' private-val'; }
+    const dep=(_cache.movs||[]).filter(m=>(m.fecha||'').slice(0,7)===mes&&m.tipo==='dep_poker').reduce((a,m)=>a+m.importe,0);
+    const ret=(_cache.movs||[]).filter(m=>(m.fecha||'').slice(0,7)===mes&&m.tipo==='ret_poker').reduce((a,m)=>a+m.importe,0);
+    const det=document.getElementById('ing-poker-auto-detalle');
+    if(det) det.textContent=`${sesMes.length} sesiones · Depósitos: ${fmt(dep)} · Retiradas: ${fmt(ret)}`;
+  } else {
+    const el=document.getElementById('ing-poker-auto'); if(el){ el.textContent='Sin datos de Spins'; el.className='stat-value neutral'; }
+  }
+}
+// Cache de sesiones de Spins (si estamos en Patrimonio sin tener acceso directo a allSesiones)
+let _cache_spinsSesiones=[];
+
+async function guardarIngreso(){
+  const fecha=document.getElementById('i-fecha').value;
+  const importe=parseFloat(document.getElementById('i-importe').value);
+  if(!fecha||!importe){ toast('Rellena fecha e importe',true); return; }
+  const cat=document.getElementById('i-cat').value;
+  const concepto=document.getElementById('i-concepto').value;
+  const cuenta=document.getElementById('i-cuenta').value;
+  const nota=document.getElementById('i-nota').value.trim();
+  if(!cat||!concepto){ toast('Selecciona categoría y concepto',true); return; }
+  const catLabel=ingresoCats.find(c=>c.id===cat)?.label||cat;
+  const g={fecha,importe,cat,cat_label:catLabel,descripcion:concepto,cuenta,nota,id:Date.now()};
+  if(!_cache.ingresos) _cache.ingresos=[];
+  _cache.ingresos.unshift(g);
+  try{ await sb('ingresos','POST',g); }
+  catch(e){ toast('Error sincronizando: '+e.message,true); }
+  if(cuenta&&findGrupoForSub(cuenta)) await updateSaldoLocal(cuenta,importe);
+  ['i-importe','i-nota'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('i-cat').value=''; document.getElementById('i-concepto').value='';
+  toast('✓ Ingreso registrado'); updateHeader();
+}
+
+function renderIngresos(){
+  const el=document.getElementById('ingresos-list'); if(!el) return;
+  const mes=getMesSel('i-filtro-mes');
+  const items=(_cache.ingresos||[]).filter(g=>(g.fecha||'').slice(0,7)===mes);
+  if(!items.length){el.innerHTML='<div class="empty-state"><p>Sin ingresos este mes.</p></div>';return;}
+  el.innerHTML=items.map(g=>`<div class="item-row">
+    <div>
+      <span class="item-tag in">${g.cat_label||g.cat||'—'}</span>
+      <div class="item-route">${g.descripcion||'—'}${g.cuenta?' · '+g.cuenta:''}</div>
+      <div class="item-date">${g.fecha}${g.nota?' · '+g.nota:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="item-amount in private-val">+${fmt2(g.importe)}</div>
+      <button class="icon-btn danger" onclick="borrarIngreso(${g.id})">✕</button>
+    </div>
+  </div>`).join('');
+  applyPrivacyState();
+}
+
+async function borrarIngreso(id){
+  const g=(_cache.ingresos||[]).find(x=>Number(x.id)===Number(id));
+  if(g?.cuenta&&findGrupoForSub(g.cuenta)) await updateSaldoLocal(g.cuenta,-g.importe);
+  _cache.ingresos=(_cache.ingresos||[]).filter(x=>Number(x.id)!==Number(id));
+  try{ await sb('ingresos','DELETE',null,`?id=eq.${id}`); }
+  catch(e){ toast('Error en nube: '+e.message,true); }
+  renderIngresos(); updateHeader(); toast('✓ Ingreso eliminado');
+}
+
+function buildIngresosAnalisis(){
+  const mes=getMesSel('i-analisis-mes');
+  const año=getAño(mes);
+  const ingsMes=(_cache.ingresos||[]).filter(g=>(g.fecha||'').slice(0,7)===mes);
+  const ingsAño=(_cache.ingresos||[]).filter(g=>(g.fecha||'').startsWith(año));
+  const totalMes=ingsMes.reduce((a,g)=>a+g.importe,0);
+  const totalAño=ingsAño.reduce((a,g)=>a+g.importe,0);
+  const el=document.getElementById('ia-total-mes'); if(el) el.textContent='+'+fmt2(totalMes);
+  const el2=document.getElementById('ia-total-año'); if(el2) el2.textContent='+'+fmt2(totalAño);
+  const byMes={}, byAño={};
+  ingresoCats.forEach(c=>{ byMes[c.id]=0; byAño[c.id]=0; });
+  ingsMes.forEach(g=>{ if(byMes[g.cat]!==undefined) byMes[g.cat]+=g.importe; });
+  ingsAño.forEach(g=>{ if(byAño[g.cat]!==undefined) byAño[g.cat]+=g.importe; });
+  const catsConDatos=ingresoCats.filter(c=>byMes[c.id]>0||byAño[c.id]>0);
+  mkChart('ch-ingresos-donut',{type:'doughnut',data:{labels:catsConDatos.map(c=>c.label),datasets:[{data:catsConDatos.map(c=>byMes[c.id]),backgroundColor:catsConDatos.map(c=>c.color+'cc'),borderColor:catsConDatos.map(c=>c.color),borderWidth:1}]},options:{plugins:{legend:{position:'bottom',labels:{color:getMutedColor(),font:{family:"'DM Sans'",size:10},padding:10,boxWidth:10}},tooltip:{callbacks:{label:ctx=>_privacyOn?` ${ctx.label}: ••••`:` ${ctx.label}: +${fmt2(ctx.raw)} (${totalMes>0?((ctx.raw/totalMes)*100).toFixed(1):0}%)`}}}}});
+  document.getElementById('tbl-ingresos-cats').innerHTML=catsConDatos.map(c=>`<tr>
+    <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};margin-right:6px"></span>${c.label}</td>
+    <td class="private-val ${byMes[c.id]>0?'up':''}">${byMes[c.id]>0?'+'+fmt2(byMes[c.id]):'—'}</td>
+    <td class="private-val ${byAño[c.id]>0?'up':''}">${byAño[c.id]>0?'+'+fmt2(byAño[c.id]):'—'}</td>
+    <td>${totalMes>0?((byMes[c.id]/totalMes)*100).toFixed(1)+'%':'—'}</td>
+  </tr>`).join('');
+  applyPrivacyState();
+}
+
+function buildIngresosCatsEditor(){
+  const el=document.getElementById('ingresos-cats-editor'); if(!el) return;
+  el.innerHTML=ingresoCats.map(c=>`<div class="group-block" style="margin-bottom:8px">
+    <div class="group-header">
+      <div class="group-name"><div class="group-dot" style="background:${c.color}"></div><span style="color:${c.color}">${c.label}</span></div>
+      <div style="display:flex;gap:5px">
+        <button class="icon-btn" onclick="addIngresoConcepto('${c.id}')">＋</button>
+        <button class="icon-btn danger" onclick="delIngresoCat('${c.id}')">🗑</button>
+      </div>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">
+      ${c.conceptos.map(co=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:4px 10px;font-size:12px">${co}<button onclick="delIngresoConcepto('${c.id}','${co.replace(/'/g,"\\'")}')\" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;padding:0">×</button></span>`).join('')}
+    </div>
+  </div>`).join('');
+}
+
+function addIngresoCat(){
+  showEditorModal('Nueva categoría de ingreso','ej: Dividendos, Alquileres...','',label=>{
+    const id='icat_'+Date.now();
+    ingresoCats.push({id,label,color:'#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0'),conceptos:[]});
+    saveIngresoCats(); buildIngresosCatsEditor(); buildCatSelector('i-cat',ingresoCats);
+    toast('✓ Categoría creada');
+  });
+}
+function delIngresoCat(id){ ingresoCats=ingresoCats.filter(c=>c.id!==id); saveIngresoCats(); buildIngresosCatsEditor(); buildCatSelector('i-cat',ingresoCats); }
+function addIngresoConcepto(catId){
+  showEditorModal('Nuevo concepto','ej: Dividendo Santander...','',label=>{
+    const c=ingresoCats.find(x=>x.id===catId); if(!c) return;
+    c.conceptos.push(label); saveIngresoCats(); buildIngresosCatsEditor(); toast('✓ Concepto añadido');
+  });
+}
+function delIngresoConcepto(catId,concepto){ const c=ingresoCats.find(x=>x.id===catId); if(!c) return; c.conceptos=c.conceptos.filter(x=>x!==concepto); saveIngresoCats(); buildIngresosCatsEditor(); }
+
+// ═══════════════════════════════════════════════════
+// PÁGINA: INVERSIONES
+// Combina las antiguas pestañas Inversiones + Rentabilidad + Fondos.
+// Subtabs: Resumen (tabla + gráficas), Por fondo (detalle + histórico), Registrar (operaciones).
+// Los VL actuales se guardan en la tabla vliq_cache de Supabase.
+// La curva de valor histórico usa el VL exacto en cada fecha de compra (datos del FIFO)
+// para mostrar volatilidad real, no una línea plana.
+// ═══════════════════════════════════════════════════
+
+function showInvTab(t){
+  ['resumen','fondo','registrar'].forEach(x=>{
+    const el=document.getElementById('invtab-'+x);
+    const btn=document.getElementById('invtab-btn-'+x);
+    if(el) el.style.display=(x===t?'block':'none');
+    if(btn){btn.style.background=x===t?'var(--accent-soft)':'var(--surface)';btn.style.color=x===t?'var(--accent)':'var(--muted)';btn.style.borderColor=x===t?'var(--accent)':'var(--border)';}
+  });
+  if(t==='registrar') buildInvRegistrar();
+  if(t==='fondo') buildInvFondoSelector();
+}
+
+function buildInversiones(){
+  showInvTab('resumen');
+  buildInvVLInputs();
+  buildInvResumen();
+}
+
+// ── VL actual: inputs + guardado ─────────────────────────────────────
+function buildInvVLInputs(){
+  const el=document.getElementById('inv-vl-inputs'); if(!el) return;
+  const hoje=today();
+  el.innerHTML=FONDOS_DEF.map(f=>{
+    const cached=_cache.vliq[f.id];
+    const vlVal=cached?cached.valor:'';
+    const vlFecha=cached?cached.fecha:'';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-size:13px"><strong>${f.nombre.split('—')[0].trim()}</strong><span style="font-size:11px;color:var(--muted);display:block">${f.plataforma}${vlFecha?' · actualizado '+vlFecha:' · sin dato'}</span></div>
+      <input type="number" id="vl-input-${f.id}" value="${vlVal}" step="0.0001" placeholder="VL actual"
+        style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;text-align:right;background:var(--bg);color:var(--text)">
+      <span style="font-size:12px;color:var(--muted)">€</span>
+    </div>`;
+  }).join('');
+}
+
+async function guardarTodosVL(){
+  const hoje=today();
+  const updates=[];
+  for(const f of FONDOS_DEF){
+    const el=document.getElementById('vl-input-'+f.id);
+    if(!el||!el.value) continue;
+    const vl=parseFloat(el.value);
+    if(!isNaN(vl)&&vl>0){
+      updates.push({fondo_id:f.id,valor:vl,fecha:hoje});
+      _cache.vliq[f.id]={valor:vl,fecha:hoje};
+    }
+  }
+  if(!updates.length){toast('Introduce al menos un VL',true);return;}
+  try{
+    for(const u of updates) await sbUpsert('vliq_cache',u,'fondo_id');
+    toast('✓ VL guardados correctamente');
+    buildInvVLInputs();
+    buildInvResumen();
+    if(document.getElementById('invtab-fondo').style.display!=='none') buildInvFondo(document.getElementById('inv-fondo-sel').value);
+  }catch(e){toast('Error guardando VL: '+e.message,true);}
+}
+
+// ── Helpers de cálculo ────────────────────────────────────────────────
+// Calcula las participaciones totales actuales de un fondo
+// (suma de aportaciones_data + operaciones extra guardadas en Supabase)
+function calcParticFondo(f){
+  const base=f.aportaciones_data.reduce((a,x)=>{
+    const partic=x.partic||(x.precio_vl?x.importe/x.precio_vl:0);
+    return a+partic;
+  },0);
+  const extra=(_cache.invOps||[]).filter(op=>op.fondo_id===f.id).reduce((a,op)=>{
+    const sign=(op.tipo==='reembolso'||op.tipo==='traspaso_salida')?-1:1;
+    return a+sign*(op.partic||0);
+  },0);
+  return base+extra;
+}
+
+// XIRR (TIR con flujos irregulares) — Newton-Raphson
+function calcXIRR(cashflows){
+  if(!cashflows||cashflows.length<2) return null;
+  const msPerYear=365.25*24*3600*1000;
+  const t0=cashflows[0].date.getTime();
+  let r=0.1;
+  for(let i=0;i<200;i++){
+    let f=0,df=0;
+    for(const cf of cashflows){
+      const t=(cf.date.getTime()-t0)/msPerYear;
+      const v=cf.amount/Math.pow(1+r,t);
+      f+=v;
+      df-=t*v/(1+r);
+    }
+    if(Math.abs(df)<1e-10) break;
+    const delta=f/df;
+    r-=delta;
+    if(Math.abs(delta)<1e-8) break;
+    if(!isFinite(r)||r<-0.999) return null;
+  }
+  return isFinite(r)?r:null;
+}
+
+function getFondoXIRR(f,vlActual){
+  if(!vlActual||!vlActual>0) return null;
+  const todas=getTodosAportes(f);
+  const partic=calcParticFondo(f);
+  const valorActual=partic*vlActual;
+  const cf=todas.map(a=>({date:new Date(a.fecha),amount:-(a.importe)}));
+  cf.push({date:new Date(),amount:valorActual});
+  return calcXIRR(cf);
+}
+
+// Todas las aportaciones (base + operaciones extra Supabase)
+function getTodosAportes(f){
+  const extra=(_cache.invOps||[]).filter(op=>op.fondo_id===f.id&&(op.tipo==='suscripcion'||op.tipo==='traspaso_entrada'));
+  return [...f.aportaciones_data,...extra.map(op=>({fecha:op.fecha,importe:op.importe,partic:op.partic,precio_vl:op.precio_vl}))].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+
+// ── RESUMEN ───────────────────────────────────────────────────────────
+function buildInvResumen(){
+  let totalInv=0,totalVal=0,totalCoste=0;
+  const vlqs=_cache.vliq||{};
+  const rows=FONDOS_DEF.map(f=>{
+    const vl=vlqs[f.id]?.valor||null;
+    const partic=calcParticFondo(f);
+    const val=vl?partic*vl:null;
+    const gp=val?val-f.total_invertido:null;
+    const gpPct=gp&&f.total_invertido>0?gp/f.total_invertido*100:null;
+    const costeAno=val?val*f.comision_anual_pct/100:f.total_invertido*f.comision_anual_pct/100;
+    totalInv+=f.total_invertido;
+    if(val) totalVal+=val;
+    totalCoste+=costeAno;
+    const gpCls=gp==null?'':gp>=0?'up':'down';
+    return{f,vl,partic,val,gp,gpPct,costeAno,gpCls};
+  });
+
+  // Stats
+  const totalGP=totalVal-totalInv;
+  const totalGPPct=totalInv>0?totalGP/totalInv*100:null;
+  document.getElementById('inv-total-inv').textContent=fmt2(totalInv);
+  document.getElementById('inv-total-val').textContent=totalVal?fmt2(totalVal):'(VL pendiente)';
+  const gpEl=document.getElementById('inv-total-gp');
+  gpEl.textContent=totalVal?fmt2(totalGP):'—';
+  gpEl.className='stat-value '+(totalGP>=0?'pos':'neg')+' private-val';
+  document.getElementById('inv-total-gpct').textContent=totalGPPct!=null?(totalGPPct>=0?'+':'')+totalGPPct.toFixed(2)+'%':'';
+  document.getElementById('inv-total-coste').textContent=fmt2(totalCoste)+'/año';
+
+  // Tabla
+  document.getElementById('tbl-inv-body').innerHTML=rows.map(({f,vl,partic,val,gp,gpPct,costeAno,gpCls})=>`<tr style="cursor:pointer" onclick="showInvTab('fondo');buildInvFondoSelector('${f.id}')">
+    <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${f.color};margin-right:5px"></span>${f.nombre.split('—')[0].trim()}<br><span style="font-size:10px;color:var(--muted)">${f.plataforma}</span></td>
+    <td class="private-val">${fmt2(f.total_invertido)}</td>
+    <td>${partic.toFixed(4)}</td>
+    <td>${vl?vl.toFixed(4)+'€':'—'}</td>
+    <td class="private-val">${val?fmt2(val):'—'}</td>
+    <td class="private-val ${gpCls}">${gp!=null?(gp>=0?'+':'')+fmt2(gp):'—'}</td>
+    <td class="${gpCls}">${gpPct!=null?(gpPct>=0?'+':'')+gpPct.toFixed(2)+'%':'—'}</td>
+    <td>${f.comision_anual_pct}%</td>
+    <td class="private-val">${fmt2(costeAno)}</td>
+  </tr>`).join('');
+
+  // Barras invertido vs valor
+  const cd=getCD();
+  const labels=FONDOS_DEF.map(f=>f.nombre.split('—')[0].trim().split(' ').slice(0,2).join(' '));
+  mkChart('ch-inv-barras',{type:'bar',data:{labels,datasets:[
+    {label:'Invertido',data:FONDOS_DEF.map(f=>f.total_invertido),backgroundColor:FONDOS_DEF.map(f=>f.color+'55'),borderColor:FONDOS_DEF.map(f=>f.color),borderWidth:1,borderRadius:4},
+    {label:'Valor actual',data:rows.map(r=>r.val||r.f.total_invertido),backgroundColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a88':'#dc262688'):r.f.color+'33'),borderColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a':'#dc2626'):r.f.color),borderWidth:1,borderRadius:4},
+  ]},options:{...cd,plugins:{...cd.plugins,legend:{display:true,labels:{color:getMutedColor(),font:{size:11}}}}}});
+
+  // Donut composición
+  const donutVals=rows.map(r=>r.val||r.f.total_invertido);
+  const total=donutVals.reduce((a,b)=>a+b,0);
+  mkChart('ch-inv-donut',{type:'doughnut',data:{labels:FONDOS_DEF.map(f=>f.nombre.split('—')[0].trim()),datasets:[{data:donutVals,backgroundColor:FONDOS_DEF.map(f=>f.color+'cc'),borderColor:FONDOS_DEF.map(f=>f.color),borderWidth:1}]},
+    options:{plugins:{legend:{position:'bottom',labels:{color:getMutedColor(),font:{family:"'DM Sans'",size:10},padding:8,boxWidth:10}},
+      tooltip:{callbacks:{label:ctx=>_privacyOn?` ${ctx.label}: ••••`:` ${ctx.label}: ${fmt2(ctx.raw)} (${total>0?((ctx.raw/total)*100).toFixed(1):0}%)`}}}}});
+
+  applyPrivacyState();
+}
+
+// ── POR FONDO ─────────────────────────────────────────────────────────
+function buildInvFondoSelector(preselect){
+  const sel=document.getElementById('inv-fondo-sel'); if(!sel) return;
+  sel.innerHTML=FONDOS_DEF.map(f=>`<option value="${f.id}">${f.nombre.split('—')[0].trim()} — ${f.plataforma}</option>`).join('');
+  if(preselect) sel.value=preselect;
+  buildInvFondo(sel.value);
+}
+
+function buildInvFondo(fondoId){
+  const f=FONDOS_DEF.find(x=>x.id===fondoId); if(!f) return;
+  const el=document.getElementById('inv-fondo-detail'); if(!el) return;
+  const vl=_cache.vliq[f.id]?.valor||null;
+  const partic=calcParticFondo(f);
+  const val=vl?partic*vl:null;
+  const gp=val?val-f.total_invertido:null;
+  const gpPct=gp&&f.total_invertido>0?gp/f.total_invertido*100:null;
+  const xirr=getFondoXIRR(f,vl);
+  const costeAno=val?val*f.comision_anual_pct/100:f.total_invertido*f.comision_anual_pct/100;
+  const gpCls=gp==null?'neutral':gp>=0?'pos':'neg';
+  const isin=f.isin!==f.id?`ISIN: ${f.isin}`:'';
+
+  // Stats card
+  const statsHtml=`<div class="form-card" style="border-left:4px solid ${f.color}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div><div style="font-size:15px;font-weight:600;color:${f.color}">${f.nombre}</div>
+        <div style="font-size:12px;color:var(--muted)">${f.plataforma} · ${f.tipo==='monetario'?'Fondo monetario':'Renta variable'} · TER ${f.comision_anual_pct}%</div>
+        ${isin?`<div style="font-size:11px;color:var(--muted)">${isin}</div>`:''}
+      </div>
+      <a href="${f.enlace}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">Abrir ↗</a>
+    </div>
+    <div class="stats-grid">
+      <div><div class="stat-label">Total invertido</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(f.total_invertido)}</div></div>
+      <div><div class="stat-label">Participaciones</div><div class="stat-value neutral" style="font-size:16px">${partic.toFixed(6)}</div></div>
+      <div><div class="stat-label">VL actual</div><div class="stat-value neutral" style="font-size:16px">${vl?vl.toFixed(4)+'€':'Sin dato'}</div></div>
+      <div><div class="stat-label">Valor actual</div><div class="stat-value neutral private-val" style="font-size:16px">${val?fmt2(val):'—'}</div></div>
+      <div><div class="stat-label">Ganancia / Pérdida</div><div class="stat-value ${gpCls} private-val" style="font-size:16px">${gp!=null?(gp>=0?'+':'')+fmt2(gp):'—'}</div></div>
+      <div><div class="stat-label">Rentabilidad</div><div class="stat-value ${gpCls}" style="font-size:16px">${gpPct!=null?(gpPct>=0?'+':'')+gpPct.toFixed(2)+'%':'—'}</div></div>
+      <div><div class="stat-label">TIR anualizada</div><div class="stat-value ${xirr!=null?(xirr>=0?'pos':'neg'):'neutral'}" style="font-size:16px">${xirr!=null?(xirr>=0?'+':''+(xirr*100).toFixed(2)+'%'):'—'}</div></div>
+      <div><div class="stat-label">Coste anual est.</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(costeAno)}</div></div>
+    </div>
+  </div>`;
+
+  // Gráfica: reconstrucción histórica de valor usando VL en cada fecha de compra
+  const aportes=getTodosAportes(f);
+  let cumPartic=0, cumInv=0;
+  const chartLabels=[], chartValor=[], chartInv=[];
+  aportes.forEach(a=>{
+    const vlAporte=a.precio_vl||null;
+    const particAporte=a.partic||(vlAporte?a.importe/vlAporte:0);
+    if(vlAporte&&cumPartic>0){
+      // Antes de esta compra: valor al VL actual de esta fecha
+      chartLabels.push(a.fecha+' (antes)');
+      chartValor.push(parseFloat((cumPartic*vlAporte).toFixed(2)));
+      chartInv.push(parseFloat(cumInv.toFixed(2)));
+    }
+    cumPartic+=particAporte;
+    cumInv+=a.importe;
+    if(vlAporte){
+      chartLabels.push(a.fecha);
+      chartValor.push(parseFloat((cumPartic*vlAporte).toFixed(2)));
+      chartInv.push(parseFloat(cumInv.toFixed(2)));
+    }
+  });
+  if(vl){
+    chartLabels.push('Hoy ('+today()+')');
+    chartValor.push(parseFloat((cumPartic*vl).toFixed(2)));
+    chartInv.push(parseFloat(cumInv.toFixed(2)));
+  }
+
+  const hasChart=chartLabels.length>1;
+  const chartHtml=hasChart?`<div class="chart-card">
+    <div class="chart-title">Evolución real del valor — datos en fechas de compra</div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:8px">Muestra el valor estimado de tu cartera en cada fecha de compra, usando el VL real de ese día. Refleja la volatilidad real del fondo.</p>
+    <div class="chart-wrap tall"><canvas id="ch-inv-fondo-hist"></canvas></div>
+  </div>`:'<div class="insight-banner" style="font-size:12px">Introduce el VL actual y asegúrate de que las aportaciones tienen precio_vl para ver la evolución histórica.</div>';
+
+  // Tabla de aportaciones
+  const tablaBulk=aportes.map(a=>{
+    const vlA=a.precio_vl||null;
+    const pA=a.partic||(vlA?a.importe/vlA:null);
+    return`<tr><td>${a.fecha}</td><td class="private-val">${fmt2(a.importe)}</td><td>${pA?pA.toFixed(6):'—'}</td><td>${vlA?vlA.toFixed(4)+'€':'—'}</td></tr>`;
+  }).join('');
+  const tablaHtml=`<div class="chart-card">
+    <div class="chart-title">Aportaciones históricas (${aportes.length} operaciones)</div>
+    <div class="tabla-scroll"><table class="tabla-resumen">
+      <thead><tr><th>Fecha</th><th>Importe</th><th>Participaciones</th><th>VL compra</th></tr></thead>
+      <tbody>${tablaBulk}</tbody>
+    </table></div>
+  </div>`;
+
+  el.innerHTML=statsHtml+chartHtml+tablaHtml;
+  applyPrivacyState();
+
+  if(hasChart){
+    const cd=getCD();
+    mkChart('ch-inv-fondo-hist',{type:'line',data:{labels:chartLabels,datasets:[
+      {label:'Valor estimado',data:chartValor,borderColor:f.color,backgroundColor:f.color+'18',fill:true,tension:0,pointRadius:3,borderWidth:2},
+      {label:'Invertido acumulado',data:chartInv,borderColor:getMutedColor(),borderDash:[4,4],fill:false,tension:0,pointRadius:2,borderWidth:1.5},
+    ]},options:{...cd,plugins:{...cd.plugins,legend:{display:true,labels:{color:getMutedColor(),font:{size:11}}}}}});
+  }
+}
+
+// ── REGISTRAR ─────────────────────────────────────────────────────────
+function buildInvRegistrar(){
+  document.getElementById('inv-fecha').value=today();
+  const sel=document.getElementById('inv-fondo-reg');
+  sel.innerHTML=FONDOS_DEF.map(f=>`<option value="${f.id}">${f.nombre.split('—')[0].trim()} — ${f.plataforma}</option>`).join('');
+  renderInvOps();
+}
+
+async function guardarOperacionFondo(){
+  const fecha=document.getElementById('inv-fecha').value;
+  const tipo=document.getElementById('inv-tipo').value;
+  const fondoId=document.getElementById('inv-fondo-reg').value;
+  const importe=parseFloat(document.getElementById('inv-importe').value)||0;
+  const partic=parseFloat(document.getElementById('inv-partic').value)||0;
+  const vlReg=parseFloat(document.getElementById('inv-vl-reg').value)||null;
+  const nota=document.getElementById('inv-nota-reg').value.trim();
+  if(!fecha||!fondoId||(!importe&&!partic)){toast('Rellena fecha, fondo e importe o participaciones',true);return;}
+  const op={fondo_id:fondoId,fecha,tipo,importe,partic,precio_vl:vlReg,nota,id:Date.now()};
+  if(!_cache.invOps) _cache.invOps=[];
+  _cache.invOps.unshift(op);
+  try{ await sb('inv_operaciones','POST',op); toast('✓ Operación guardada'); }
+  catch(e){ toast('Guardado local (nube: '+e.message+')',true); }
+  renderInvOps();
+}
+
+function renderInvOps(){
+  const el=document.getElementById('tbl-inv-ops'); if(!el) return;
+  const ops=_cache.invOps||[];
+  if(!ops.length){el.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Sin operaciones extra registradas</td></tr>';return;}
+  el.innerHTML=ops.map(op=>{
+    const f=FONDOS_DEF.find(x=>x.id===op.fondo_id);
+    return`<tr>
+      <td>${op.fecha}</td>
+      <td style="font-size:11px">${f?f.nombre.split('—')[0].trim().split(' ').slice(0,2).join(' '):op.fondo_id}</td>
+      <td style="font-size:11px">${op.tipo}</td>
+      <td class="private-val">${op.importe?fmt2(op.importe):'—'}</td>
+      <td>${op.partic?op.partic.toFixed(4):'—'}</td>
+      <td>${op.precio_vl?op.precio_vl.toFixed(4):'—'}</td>
+      <td><button class="icon-btn danger" onclick="borrarInvOp(${op.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+  applyPrivacyState();
+}
+
+async function borrarInvOp(id){
+  _cache.invOps=(_cache.invOps||[]).filter(x=>Number(x.id)!==Number(id));
+  try{await sb('inv_operaciones','DELETE',null,`?id=eq.${id}`);}catch(e){}
+  renderInvOps(); toast('✓ Eliminado');
 }
 
 // ── Actualización de cotizaciones (BTC/USDC vía CoinGecko, USD/EUR vía Frankfurter) ──
