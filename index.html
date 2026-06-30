@@ -909,14 +909,33 @@ const HISTORICO = [
 // ── Definición de fondos individuales (para Rentabilidad y Fondos — NO TOCAR datos) ──
 const FONDOS_DEF = [
   // ── FINIZENS Cartera 6 ─────────────────────────────────────────────
-  // NOTA: datos de aportaciones individuales pendientes (usuario los está recopilando).
-  // La entrada de 2019-11-15 agrupa todas las aportaciones hasta esa fecha.
+  // Estructura especial: NO es un único fondo con VL propio, sino una cartera
+  // gestionada compuesta por 6 fondos Vanguard/PacifJapan + una cuenta de efectivo
+  // (~1% del total). Finizens rebalancea automáticamente entre ellos casi a diario
+  // (1.707 micro-operaciones desde 2019), así que no tiene sentido reconstruir cada
+  // movimiento individual — el dato fiable es el resumen oficial de posición que
+  // Finizens ya calcula (coste de adquisición y valor de mercado por subfondo).
+  // Datos verificados desde el extracto de posición integrada del 30/06/2026.
+  // subfondos[].coste_adq es el "total_invertido" real de cada uno; el conjunto
+  // suma 53.415,50€ (coincide exacto con el extracto oficial).
   { id:'finizens', nombre:'Finizens Cartera 6', isin:'Finizens-C6', plataforma:'Finizens',
-    tipo:'rv', color:'#38a0e0', total_invertido:52991.88, comision_anual_pct:0.23,
+    tipo:'cartera_multifondo', color:'#38a0e0', comision_anual_pct:0.23,
     enlace:'https://app.finizens.com',
+    fecha_apertura:'2019-11-14',
+    efectivo:890.45, // cuenta de efectivo dentro de la cartera (~1%), se actualiza manualmente
+    subfondos:[
+      { isin:'IE00BFPM9V94', nombre:'Vanguard US 500 Stock EUR',        titulos:63.49, coste_adq:20341.93, vl_actual:568.67 },
+      { isin:'IE00BFPM9L96', nombre:'Vanguard Europe Stock EUR',        titulos:74.06, coste_adq:12589.02, vl_actual:284.06 },
+      { isin:'IE00BFPM9J74', nombre:'Vanguard EM Stock EUR',            titulos:52.04, coste_adq: 8539.63, vl_actual:269.84 },
+      { isin:'IE00BFRTDD83', nombre:'Vanguard Global Small Cap EUR',    titulos:18.61, coste_adq: 5427.03, vl_actual:354.76 },
+      { isin:'IE00BFPM9P35', nombre:'Vanguard Japan Stock EUR',         titulos:13.16, coste_adq: 3141.39, vl_actual:308.18 },
+      { isin:'IE00BGCC5G60', nombre:'PacifJapan Stock Index EUR',       titulos:16.26, coste_adq: 3376.50, vl_actual:230.81 },
+    ],
+    // total_invertido se calcula en runtime sumando subfondos.coste_adq (no hardcodeado,
+    // para que si editas un subfondo el total se recalcule solo)
     aportaciones_data:[
-      {fecha:'2019-11-15', importe:52661.88},
-      {fecha:'2026-05-05', importe:330},
+      {fecha:'2019-11-14', importe:53085.50}, // entrada inicial real (traspaso desde otra entidad)
+      {fecha:'2026-05-07', importe:330.00},   // aportación adicional registrada
     ]},
 
   // ── NUMANTIA PATRIMONIO GLOBAL — MyInvestor ─────────────────────────
@@ -2392,7 +2411,8 @@ function buildInversiones(){
 function buildInvVLInputs(){
   const el=document.getElementById('inv-vl-inputs'); if(!el) return;
   const hoje=today();
-  el.innerHTML=FONDOS_DEF.map(f=>{
+  // Fondos normales: un input de VL único
+  const normalesHtml=FONDOS_DEF.filter(f=>f.tipo!=='cartera_multifondo').map(f=>{
     const cached=_cache.vliq[f.id];
     const vlVal=cached?cached.valor:'';
     const vlFecha=cached?cached.fecha:'';
@@ -2403,12 +2423,19 @@ function buildInvVLInputs(){
       <span style="font-size:12px;color:var(--muted)">€</span>
     </div>`;
   }).join('');
+  // Finizens: cartera multifondo, cada subfondo tiene su propio VL — se editan en "Por fondo"
+  const finizens=FONDOS_DEF.find(f=>f.tipo==='cartera_multifondo');
+  const finizensHtml=finizens?`<div style="padding:8px 0;font-size:12px;color:var(--muted)">
+    <strong style="color:var(--text)">${finizens.nombre}</strong> es una cartera de ${finizens.subfondos.length} fondos — edita cada VL en la pestaña <em>Por fondo</em>.
+  </div>`:'';
+  el.innerHTML=normalesHtml+finizensHtml;
 }
 
 async function guardarTodosVL(){
   const hoje=today();
   const updates=[];
   for(const f of FONDOS_DEF){
+    if(f.tipo==='cartera_multifondo') continue; // Finizens se guarda desde "Por fondo"
     const el=document.getElementById('vl-input-'+f.id);
     if(!el||!el.value) continue;
     const vl=parseFloat(el.value);
@@ -2431,6 +2458,7 @@ async function guardarTodosVL(){
 // Calcula las participaciones totales actuales de un fondo
 // (suma de aportaciones_data + operaciones extra guardadas en Supabase)
 function calcParticFondo(f){
+  if(f.tipo==='cartera_multifondo') return null; // no aplica: Finizens no tiene una sola "participación"
   const base=f.aportaciones_data.reduce((a,x)=>{
     const partic=x.partic||(x.precio_vl?x.importe/x.precio_vl:0);
     return a+partic;
@@ -2440,6 +2468,27 @@ function calcParticFondo(f){
     return a+sign*(op.partic||0);
   },0);
   return base+extra;
+}
+
+// ── Helpers unificados: funcionan igual para fondos normales y para Finizens ──
+// (cartera_multifondo). Centralizan la lógica para no ramificar cada función de UI.
+function getTotalInvertido(f){
+  if(f.tipo==='cartera_multifondo') return f.subfondos.reduce((a,s)=>a+s.coste_adq,0);
+  return f.total_invertido;
+}
+function getValorActual(f,vlActual){
+  if(f.tipo==='cartera_multifondo'){
+    const valorSubfondos=f.subfondos.reduce((a,s)=>a+(s.titulos*s.vl_actual),0);
+    return valorSubfondos+(f.efectivo||0);
+  }
+  if(!vlActual) return null;
+  const partic=calcParticFondo(f);
+  return partic*vlActual;
+}
+function getVLDisplay(f,vlActual){
+  // Para Finizens no hay un único VL — se muestra '—' y el desglose va en la vista de detalle
+  if(f.tipo==='cartera_multifondo') return null;
+  return vlActual||null;
 }
 
 // XIRR (TIR con flujos irregulares) — Newton-Raphson
@@ -2466,10 +2515,9 @@ function calcXIRR(cashflows){
 }
 
 function getFondoXIRR(f,vlActual){
-  if(!vlActual||!vlActual>0) return null;
+  const valorActual=getValorActual(f,vlActual);
+  if(!valorActual) return null;
   const todas=getTodosAportes(f);
-  const partic=calcParticFondo(f);
-  const valorActual=partic*vlActual;
   const cf=todas.map(a=>({date:new Date(a.fecha),amount:-(a.importe)}));
   cf.push({date:new Date(),amount:valorActual});
   return calcXIRR(cf);
@@ -2486,17 +2534,18 @@ function buildInvResumen(){
   let totalInv=0,totalVal=0,totalCoste=0;
   const vlqs=_cache.vliq||{};
   const rows=FONDOS_DEF.map(f=>{
-    const vl=vlqs[f.id]?.valor||null;
-    const partic=calcParticFondo(f);
-    const val=vl?partic*vl:null;
-    const gp=val?val-f.total_invertido:null;
-    const gpPct=gp&&f.total_invertido>0?gp/f.total_invertido*100:null;
-    const costeAno=val?val*f.comision_anual_pct/100:f.total_invertido*f.comision_anual_pct/100;
-    totalInv+=f.total_invertido;
+    const vl=getVLDisplay(f,vlqs[f.id]?.valor||null);
+    const partic=f.tipo==='cartera_multifondo'?null:calcParticFondo(f);
+    const totalInvF=getTotalInvertido(f);
+    const val=getValorActual(f,vlqs[f.id]?.valor||null);
+    const gp=val?val-totalInvF:null;
+    const gpPct=gp&&totalInvF>0?gp/totalInvF*100:null;
+    const costeAno=val?val*f.comision_anual_pct/100:totalInvF*f.comision_anual_pct/100;
+    totalInv+=totalInvF;
     if(val) totalVal+=val;
     totalCoste+=costeAno;
     const gpCls=gp==null?'':gp>=0?'up':'down';
-    return{f,vl,partic,val,gp,gpPct,costeAno,gpCls};
+    return{f,vl,partic,val,gp,gpPct,costeAno,gpCls,totalInvF};
   });
 
   // Stats
@@ -2511,10 +2560,10 @@ function buildInvResumen(){
   document.getElementById('inv-total-coste').textContent=fmt2(totalCoste)+'/año';
 
   // Tabla
-  document.getElementById('tbl-inv-body').innerHTML=rows.map(({f,vl,partic,val,gp,gpPct,costeAno,gpCls})=>`<tr style="cursor:pointer" onclick="showInvTab('fondo');buildInvFondoSelector('${f.id}')">
+  document.getElementById('tbl-inv-body').innerHTML=rows.map(({f,vl,partic,val,gp,gpPct,costeAno,gpCls,totalInvF})=>`<tr style="cursor:pointer" onclick="showInvTab('fondo');buildInvFondoSelector('${f.id}')">
     <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${f.color};margin-right:5px"></span>${f.nombre.split('—')[0].trim()}<br><span style="font-size:10px;color:var(--muted)">${f.plataforma}</span></td>
-    <td class="private-val">${fmt2(f.total_invertido)}</td>
-    <td>${partic.toFixed(4)}</td>
+    <td class="private-val">${fmt2(totalInvF)}</td>
+    <td>${partic!=null?partic.toFixed(4):(f.tipo==='cartera_multifondo'?f.subfondos.length+' fondos':'—')}</td>
     <td>${vl?vl.toFixed(4)+'€':'—'}</td>
     <td class="private-val">${val?fmt2(val):'—'}</td>
     <td class="private-val ${gpCls}">${gp!=null?(gp>=0?'+':'')+fmt2(gp):'—'}</td>
@@ -2527,12 +2576,12 @@ function buildInvResumen(){
   const cd=getCD();
   const labels=FONDOS_DEF.map(f=>f.nombre.split('—')[0].trim().split(' ').slice(0,2).join(' '));
   mkChart('ch-inv-barras',{type:'bar',data:{labels,datasets:[
-    {label:'Invertido',data:FONDOS_DEF.map(f=>f.total_invertido),backgroundColor:FONDOS_DEF.map(f=>f.color+'55'),borderColor:FONDOS_DEF.map(f=>f.color),borderWidth:1,borderRadius:4},
-    {label:'Valor actual',data:rows.map(r=>r.val||r.f.total_invertido),backgroundColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a88':'#dc262688'):r.f.color+'33'),borderColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a':'#dc2626'):r.f.color),borderWidth:1,borderRadius:4},
+    {label:'Invertido',data:rows.map(r=>r.totalInvF),backgroundColor:FONDOS_DEF.map(f=>f.color+'55'),borderColor:FONDOS_DEF.map(f=>f.color),borderWidth:1,borderRadius:4},
+    {label:'Valor actual',data:rows.map(r=>r.val||r.totalInvF),backgroundColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a88':'#dc262688'):r.f.color+'33'),borderColor:rows.map(r=>r.val?(r.gp>=0?'#16a34a':'#dc2626'):r.f.color),borderWidth:1,borderRadius:4},
   ]},options:{...cd,plugins:{...cd.plugins,legend:{display:true,labels:{color:getMutedColor(),font:{size:11}}}}}});
 
   // Donut composición
-  const donutVals=rows.map(r=>r.val||r.f.total_invertido);
+  const donutVals=rows.map(r=>r.val||r.totalInvF);
   const total=donutVals.reduce((a,b)=>a+b,0);
   mkChart('ch-inv-donut',{type:'doughnut',data:{labels:FONDOS_DEF.map(f=>f.nombre.split('—')[0].trim()),datasets:[{data:donutVals,backgroundColor:FONDOS_DEF.map(f=>f.color+'cc'),borderColor:FONDOS_DEF.map(f=>f.color),borderWidth:1}]},
     options:{plugins:{legend:{position:'bottom',labels:{color:getMutedColor(),font:{family:"'DM Sans'",size:10},padding:8,boxWidth:10}},
@@ -2552,6 +2601,9 @@ function buildInvFondoSelector(preselect){
 function buildInvFondo(fondoId){
   const f=FONDOS_DEF.find(x=>x.id===fondoId); if(!f) return;
   const el=document.getElementById('inv-fondo-detail'); if(!el) return;
+
+  if(f.tipo==='cartera_multifondo'){ buildInvFondoFinizens(f,el); return; }
+
   const vl=_cache.vliq[f.id]?.valor||null;
   const partic=calcParticFondo(f);
   const val=vl?partic*vl:null;
@@ -2591,7 +2643,6 @@ function buildInvFondo(fondoId){
     const vlAporte=a.precio_vl||null;
     const particAporte=a.partic||(vlAporte?a.importe/vlAporte:0);
     if(vlAporte&&cumPartic>0){
-      // Antes de esta compra: valor al VL actual de esta fecha
       chartLabels.push(a.fecha+' (antes)');
       chartValor.push(parseFloat((cumPartic*vlAporte).toFixed(2)));
       chartInv.push(parseFloat(cumInv.toFixed(2)));
@@ -2642,6 +2693,106 @@ function buildInvFondo(fondoId){
     ]},options:{...cd,plugins:{...cd.plugins,legend:{display:true,labels:{color:getMutedColor(),font:{size:11}}}}}});
   }
 }
+
+// ── Vista especial: Finizens (cartera multifondo) ──────────────────────
+// En lugar de un único VL, muestra los 6 subfondos editables (títulos + VL cada uno)
+// más la cuenta de efectivo, con un donut de composición interna y totales agregados.
+function buildInvFondoFinizens(f,el){
+  const totalInv=getTotalInvertido(f);
+  const valorActual=getValorActual(f);
+  const gp=valorActual-totalInv;
+  const gpPct=totalInv>0?gp/totalInv*100:0;
+  const gpCls=gp>=0?'pos':'neg';
+  const costeAno=valorActual*f.comision_anual_pct/100;
+
+  const statsHtml=`<div class="form-card" style="border-left:4px solid ${f.color}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div><div style="font-size:15px;font-weight:600;color:${f.color}">${f.nombre}</div>
+        <div style="font-size:12px;color:var(--muted)">${f.plataforma} · Cartera gestionada (${f.subfondos.length} fondos) · TER ${f.comision_anual_pct}%</div>
+      </div>
+      <a href="${f.enlace}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">Abrir ↗</a>
+    </div>
+    <div class="stats-grid">
+      <div><div class="stat-label">Total invertido</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(totalInv)}</div></div>
+      <div><div class="stat-label">Valor actual</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(valorActual)}</div></div>
+      <div><div class="stat-label">Ganancia / Pérdida</div><div class="stat-value ${gpCls} private-val" style="font-size:16px">${(gp>=0?'+':'')+fmt2(gp)}</div></div>
+      <div><div class="stat-label">Rentabilidad</div><div class="stat-value ${gpCls}" style="font-size:16px">${(gpPct>=0?'+':'')+gpPct.toFixed(2)+'%'}</div></div>
+      <div><div class="stat-label">Cuenta efectivo</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(f.efectivo||0)}</div></div>
+      <div><div class="stat-label">Coste anual est.</div><div class="stat-value neutral private-val" style="font-size:16px">${fmt2(costeAno)}</div></div>
+    </div>
+  </div>`;
+
+  const editorHtml=`<div class="form-card">
+    <div class="section-title" style="margin-top:0">Subfondos — edita títulos y VL actual</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Finizens rebalancea automáticamente entre estos 6 fondos. Actualiza los títulos y el VL cuando consultes tu extracto de posición.</p>
+    <div id="finizens-subfondos-editor">
+      ${f.subfondos.map((s,i)=>{
+        const val=s.titulos*s.vl_actual;
+        const gpS=val-s.coste_adq;
+        const gpPctS=s.coste_adq>0?gpS/s.coste_adq*100:0;
+        return`<div style="padding:10px 0;border-top:${i>0?'1px solid var(--border)':'none'}">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px">${s.nombre}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end">
+            <div><div style="font-size:9px;color:var(--muted);margin-bottom:3px">Títulos</div>
+              <input type="number" id="fin-tit-${i}" value="${s.titulos}" step="0.000001" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px;box-sizing:border-box"></div>
+            <div><div style="font-size:9px;color:var(--muted);margin-bottom:3px">VL actual (€)</div>
+              <input type="number" id="fin-vl-${i}" value="${s.vl_actual}" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px;box-sizing:border-box"></div>
+            <div style="text-align:right"><div style="font-size:9px;color:var(--muted);margin-bottom:3px">Valor / G-P</div>
+              <div class="private-val" style="font-size:12px;font-weight:600">${fmt2(val)}<br><span class="${gpS>=0?'up':'down'}" style="font-size:11px">${(gpS>=0?'+':'')+gpPctS.toFixed(1)}%</span></div></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="padding:10px 0;border-top:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:500;margin-bottom:6px">Cuenta de efectivo</div>
+        <input type="number" id="fin-efectivo" value="${f.efectivo||0}" step="0.01" style="width:140px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">
+        <span style="font-size:12px;color:var(--muted)">€</span>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="guardarFinizensSubfondos()">💾 Guardar cambios</button>
+  </div>`;
+
+  const donutHtml=`<div class="chart-card">
+    <div class="chart-title">Composición interna de la cartera</div>
+    <div class="chart-wrap"><canvas id="ch-finizens-donut"></canvas></div>
+  </div>`;
+
+  el.innerHTML=statsHtml+editorHtml+donutHtml;
+  applyPrivacyState();
+
+  const donutLabels=[...f.subfondos.map(s=>s.nombre.split(' ').slice(0,3).join(' ')),'Efectivo'];
+  const donutVals=[...f.subfondos.map(s=>s.titulos*s.vl_actual),f.efectivo||0];
+  const donutColors=['#3b8ef0','#16a34a','#8b72f0','#e07a30','#d99a1b','#14b8a6','#667085'];
+  mkChart('ch-finizens-donut',{type:'doughnut',data:{labels:donutLabels,datasets:[{data:donutVals,backgroundColor:donutColors.map(c=>c+'cc'),borderColor:donutColors,borderWidth:1}]},
+    options:{plugins:{legend:{position:'bottom',labels:{color:getMutedColor(),font:{family:"'DM Sans'",size:10},padding:8,boxWidth:10}},
+      tooltip:{callbacks:{label:ctx=>_privacyOn?` ${ctx.label}: ••••`:` ${ctx.label}: ${fmt2(ctx.raw)} (${valorActual>0?((ctx.raw/valorActual)*100).toFixed(1):0}%)`}}}}});
+}
+
+async function guardarFinizensSubfondos(){
+  const f=FONDOS_DEF.find(x=>x.tipo==='cartera_multifondo'); if(!f) return;
+  f.subfondos.forEach((s,i)=>{
+    const tit=parseFloat(document.getElementById('fin-tit-'+i)?.value);
+    const vl=parseFloat(document.getElementById('fin-vl-'+i)?.value);
+    if(!isNaN(tit)) s.titulos=tit;
+    if(!isNaN(vl)) s.vl_actual=vl;
+  });
+  const ef=parseFloat(document.getElementById('fin-efectivo')?.value);
+  if(!isNaN(ef)) f.efectivo=ef;
+  // Persistir en localStorage (estos datos no viven en Supabase, son parte de la definición del fondo)
+  localStorage.setItem('pat_finizens_override', JSON.stringify({subfondos:f.subfondos,efectivo:f.efectivo}));
+  toast('✓ Subfondos de Finizens actualizados');
+  buildInvFondo('finizens');
+  buildInvResumen();
+}
+// Al cargar, si hay overrides guardados localmente, se aplican sobre los datos base
+(function applyFinizensOverride(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('pat_finizens_override')||'null');
+    if(saved){
+      const f=FONDOS_DEF.find(x=>x.tipo==='cartera_multifondo');
+      if(f){ f.subfondos=saved.subfondos; f.efectivo=saved.efectivo; }
+    }
+  }catch(e){}
+})();
 
 // ── REGISTRAR ─────────────────────────────────────────────────────────
 function buildInvRegistrar(){
